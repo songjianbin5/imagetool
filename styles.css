@@ -1029,10 +1029,14 @@ img {
   }
 
   .hero-title {
-    align-items: flex-start;
+    align-items: baseline;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .hero-title > :first-child {
@@ -1040,8 +1044,9 @@ img {
   }
 
   .hero-title-sub {
+    font-size: 0.72em;
     padding-right: 0;
-    text-align: left;
+    text-align: center;
   }
 
   .field-grid.two-col,
