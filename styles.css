@@ -1044,6 +1044,7 @@ img {
   }
 
   .hero-title-sub {
+    display: none;
     font-size: 0.72em;
     padding-right: 0;
     text-align: center;
