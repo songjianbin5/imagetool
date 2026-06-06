@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import random
 import re
 import ssl
 import sys
@@ -144,11 +145,23 @@ def parse_multipart(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
 def api_key_from(handler: BaseHTTPRequestHandler, payload: dict[str, Any] | None = None) -> str:
     header_key = handler.headers.get("X-RunningHub-Key", "").strip()
     body_key = str((payload or {}).get("apiKey", "")).strip()
-    env_key = os.environ.get("RUNNINGHUB_API_KEY", "").strip()
+    env_values = [os.environ.get("RUNNINGHUB_API_KEY", ""), os.environ.get("RUNNINGHUB_API_KEYS", "")]
+    env_keys = [
+        item.strip()
+        for value in env_values
+        for item in re.split(r"[\n\r,;]+", value)
+        if item.strip()
+    ]
+    env_key = random.choice(env_keys) if env_keys else ""
     api_key = header_key or body_key or env_key
     if not api_key:
-        raise ApiError(401, "请填写 RunningHub API Key，或设置 RUNNINGHUB_API_KEY 环境变量")
+        raise ApiError(401, "请填写 RunningHub API Key，或设置 RUNNINGHUB_API_KEY / RUNNINGHUB_API_KEYS 环境变量")
     return api_key
+
+
+def has_server_key() -> bool:
+    env_values = [os.environ.get("RUNNINGHUB_API_KEY", ""), os.environ.get("RUNNINGHUB_API_KEYS", "")]
+    return any(item.strip() for value in env_values for item in re.split(r"[\n\r,;]+", value))
 
 
 def request_runninghub(path: str, api_key: str, *, method: str = "POST", body: bytes | None = None, content_type: str = "application/json") -> dict[str, Any]:
@@ -252,7 +265,7 @@ class RunningHubPanelHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/config":
             self.send_json(
                 {
-                    "hasServerKey": bool(os.environ.get("RUNNINGHUB_API_KEY", "").strip()),
+                    "hasServerKey": has_server_key(),
                     "tools": {key: {"name": value["name"], "endpoint": value["endpoint"]} for key, value in TOOLS.items()},
                 }
             )

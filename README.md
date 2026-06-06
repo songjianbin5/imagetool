@@ -1,14 +1,47 @@
-# 图片工具入口
+# 煊原集团 - 内部图片工具
 
-本项目合并了两个 Web 工具：
+这个项目包含两个 Web 工具：
 
 - `/`：入口主页
 - `/batch/`：图片处理工具，支持调整尺寸、转换格式、压缩图片大小
 - `/ai/`：AI 图片工作台，支持 AI 抠图、AI 修图、AI 高清放大
 
-## 启动
+## Cloudflare Pages 部署
 
-双击 `start.bat`，或在当前目录运行：
+仓库可以直接部署到 Cloudflare Pages，例如：
+
+```text
+Production URL: https://imagetool-4yd.pages.dev/
+Build command: 留空
+Build output directory: public
+Functions directory: functions
+```
+
+Pages Functions 会提供以下接口：
+
+- `GET /api/config`
+- `POST /api/process`
+- `POST /api/query`
+
+### 环境变量
+
+在 Cloudflare Pages 的 Settings -> Environment variables 中配置：
+
+```text
+RUNNINGHUB_API_KEY=你的 RunningHub API Key
+```
+
+如果有多个 key，可以配置：
+
+```text
+RUNNINGHUB_API_KEYS=key1,key2,key3
+```
+
+多个 key 会随机调用。也可以用换行分隔。
+
+## 本地开发
+
+双击 `start.bat`，或运行：
 
 ```powershell
 python server.py
@@ -20,40 +53,29 @@ python server.py
 http://127.0.0.1:8000/
 ```
 
-## 目录结构
-
-```text
-public/
-  index.html        入口主页
-  home.css          入口主页样式
-  ai/               AI 图片工作台
-  batch/            批量图片处理工具
-server.py           静态页面服务 + RunningHub API 代理
-```
-
-## RunningHub API Key
-
-线上建议使用环境变量：
+本地 Python 服务同样支持：
 
 ```powershell
-$env:RUNNINGHUB_API_KEY="你的 API Key"
+$env:RUNNINGHUB_API_KEY="你的 RunningHub API Key"
 python server.py
 ```
 
-AI 图片工作台会通过 `server.py` 代理 RunningHub 的上传、提交和查询接口。
+或多个 key：
 
-## 线上部署
+```powershell
+$env:RUNNINGHUB_API_KEYS="key1,key2,key3"
+python server.py
+```
 
-当前版本包含 Python 后端代理，不能只上传静态文件完成全部功能。
-
-推荐：
-
-- Render / Railway / Fly.io / VPS：直接运行 `python server.py`
-- Cloudflare Pages：适合入口页和批量图片工具；AI 工作台需要额外改成 Pages Functions/Workers 代理 RunningHub API
-
-环境变量：
+## 目录结构
 
 ```text
-RUNNINGHUB_API_KEY=你的 API Key
-PORT=平台提供的端口
+public/              静态页面
+  index.html         入口主页
+  home.css
+  ai/                AI 图片工作台
+  batch/             图片处理工具
+functions/api/       Cloudflare Pages Functions API 代理
+server.py            本地开发服务器和 RunningHub API 代理
+wrangler.toml        Cloudflare Pages 配置
 ```
