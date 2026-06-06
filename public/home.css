@@ -117,6 +117,13 @@ svg {
   color: #fff;
 }
 
+.entry-card:hover .entry-copy strong,
+.entry-card:focus .entry-copy strong,
+.entry-card:focus-visible .entry-copy strong,
+.entry-card:active .entry-copy strong {
+  color: #fff;
+}
+
 .entry-copy {
   display: grid;
   gap: 8px;

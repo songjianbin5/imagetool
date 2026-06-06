@@ -51,6 +51,10 @@ async function boot() {
 function bindEvents() {
   document.querySelectorAll("[data-tool]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (state.tool === button.dataset.tool) {
+        return;
+      }
+      clearQueue();
       state.tool = button.dataset.tool;
       document.querySelectorAll("[data-tool]").forEach((item) => item.classList.toggle("is-active", item === button));
       document.querySelectorAll("[data-options]").forEach((block) => {
