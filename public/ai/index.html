@@ -138,14 +138,32 @@
           </div>
 
           <div class="queue-panel">
-            <div class="queue-title">
-              <h3>任务列表</h3>
-              <div class="queue-actions">
-                <span id="taskSummary">0 / 0 完成</span>
-                <button class="ghost-button" id="clearButton" type="button">清空列表</button>
-              </div>
+            <div class="queue-tabs" role="tablist" aria-label="任务和结果列表">
+              <button class="queue-tab is-active" id="tasksTab" type="button" data-panel="tasks" role="tab" aria-selected="true" aria-controls="tasksPanel">任务列表</button>
+              <button class="queue-tab" id="historyTab" type="button" data-panel="history" role="tab" aria-selected="false" aria-controls="historyPanel">处理结果</button>
             </div>
-            <div class="queue-list" id="queueList"></div>
+
+            <div class="queue-tab-panel is-active" id="tasksPanel" role="tabpanel" aria-labelledby="tasksTab">
+              <div class="queue-title">
+                <h3>任务列表</h3>
+                <div class="queue-actions">
+                  <span id="taskSummary">0 / 0 完成</span>
+                  <button class="ghost-button" id="clearButton" type="button">清空列表</button>
+                </div>
+              </div>
+              <div class="queue-list" id="queueList"></div>
+            </div>
+
+            <div class="queue-tab-panel" id="historyPanel" role="tabpanel" aria-labelledby="historyTab" hidden>
+              <div class="queue-title">
+                <h3>处理结果</h3>
+                <div class="queue-actions">
+                  <span id="historySummary">近 24 小时</span>
+                  <button class="ghost-button" id="clearHistoryButton" type="button">清空结果</button>
+                </div>
+              </div>
+              <div class="queue-list history-list" id="historyList"></div>
+            </div>
           </div>
         </section>
       </main>
@@ -153,6 +171,7 @@
 
     <template id="queueItemTemplate">
       <article class="queue-item">
+        <button class="queue-remove-button" type="button" aria-label="移除文件">×</button>
         <button class="thumb-button" type="button">
           <img alt="" />
         </button>
@@ -162,6 +181,20 @@
           <div class="progress-track"><span></span></div>
         </div>
         <a class="download-link" target="_blank" rel="noreferrer">下载</a>
+      </article>
+    </template>
+
+    <template id="historyItemTemplate">
+      <article class="queue-item history-item">
+        <a class="thumb-button" target="_blank" rel="noreferrer">
+          <img alt="" />
+        </a>
+        <div class="queue-meta">
+          <strong></strong>
+          <small></small>
+          <span class="history-time"></span>
+        </div>
+        <a class="download-link is-visible" target="_blank" rel="noreferrer">下载</a>
       </article>
     </template>
 

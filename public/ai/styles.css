@@ -494,6 +494,40 @@ h3 {
   padding-top: 16px;
 }
 
+.queue-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(226, 233, 242, 0.72);
+}
+
+.queue-tab {
+  min-height: 38px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.queue-tab.is-active {
+  background: #fff;
+  color: var(--blue);
+  box-shadow: 0 7px 18px rgba(40, 60, 88, 0.12);
+}
+
+.queue-tab-panel {
+  display: none;
+}
+
+.queue-tab-panel.is-active {
+  display: block;
+}
+
 .queue-title span {
   color: var(--muted);
   font-size: 13px;
@@ -530,16 +564,55 @@ h3 {
   color: var(--muted);
 }
 
+.history-list:empty::before {
+  content: "近 24 小时还没有处理结果";
+}
+
 .queue-item {
+  position: relative;
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   min-height: 72px;
-  padding: 8px;
+  padding: 8px 38px 8px 8px;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.72);
+}
+
+.queue-remove-button {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.queue-remove-button:hover {
+  border-color: rgba(199, 111, 19, 0.28);
+  background: #fff;
+  color: var(--orange);
+  transform: scale(1.04);
+}
+
+.queue-remove-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
 }
 
 .queue-item.is-active {
@@ -548,6 +621,7 @@ h3 {
 }
 
 .thumb-button {
+  display: block;
   overflow: hidden;
   width: 58px;
   height: 58px;
@@ -577,6 +651,13 @@ h3 {
 
 .queue-meta small {
   margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history-time {
+  display: block;
+  margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -719,6 +800,7 @@ h3 {
 
   .queue-item {
     grid-template-columns: 52px minmax(0, 1fr);
+    padding-right: 38px;
   }
 
   .download-link {

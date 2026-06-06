@@ -2,7 +2,9 @@ const state = {
   tool: "cutout",
   cutoutMode: "white",
   items: [],
+  history: [],
   selectedId: null,
+  activePanel: "tasks",
   busy: false,
   hasServerKey: false,
 };
@@ -10,8 +12,12 @@ const state = {
 const els = {
   apiKey: document.querySelector("#apiKey"),
   clearButton: document.querySelector("#clearButton"),
+  clearHistoryButton: document.querySelector("#clearHistoryButton"),
   dropZone: document.querySelector("#dropZone"),
   fileInput: document.querySelector("#fileInput"),
+  historyList: document.querySelector("#historyList"),
+  historySummary: document.querySelector("#historySummary"),
+  historyTemplate: document.querySelector("#historyItemTemplate"),
   instanceType: document.querySelector("#instanceType"),
   repairResolution: document.querySelector("#repairResolution"),
   queueCounter: document.querySelector("#queueCounter"),
@@ -35,10 +41,13 @@ const labels = {
 };
 
 const API_KEY_STORAGE_KEY = "rhPanel.runningHubApiKey";
+const RESULT_HISTORY_STORAGE_KEY = "rhPanel.resultHistory";
+const RESULT_HISTORY_TTL = 24 * 60 * 60 * 1000;
 
 async function boot() {
   bindEvents();
   restoreSavedApiKey();
+  restoreResultHistory();
   render();
   try {
     const config = await fetchJson("/api/config");
@@ -51,15 +60,28 @@ async function boot() {
 function bindEvents() {
   document.querySelectorAll("[data-tool]").forEach((button) => {
     button.addEventListener("click", () => {
-      if (state.tool === button.dataset.tool) {
+      const nextTool = button.dataset.tool;
+      if (state.tool === nextTool) {
         return;
       }
-      clearQueue();
-      state.tool = button.dataset.tool;
-      document.querySelectorAll("[data-tool]").forEach((item) => item.classList.toggle("is-active", item === button));
-      document.querySelectorAll("[data-options]").forEach((block) => {
-        block.classList.toggle("is-hidden", block.dataset.options !== state.tool);
-      });
+      if (state.busy) {
+        toast("处理中暂时不能切换功能");
+        return;
+      }
+      if (queueHasResults()) {
+        const confirmed = window.confirm("切换功能会清除当前任务列表中的处理结果，并将任务重置为等待处理，是否继续？");
+        if (!confirmed) {
+          return;
+        }
+        resetQueueResults(nextTool);
+      }
+      setTool(nextTool);
+    });
+  });
+
+  document.querySelectorAll("[data-panel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activePanel = button.dataset.panel;
       render();
     });
   });
@@ -73,6 +95,7 @@ function bindEvents() {
 
   els.fileInput.addEventListener("change", (event) => addFiles(event.target.files));
   els.clearButton.addEventListener("click", clearQueue);
+  els.clearHistoryButton.addEventListener("click", clearResultHistory);
   els.startButton.addEventListener("click", processQueue);
 
   ["dragenter", "dragover"].forEach((type) => {
@@ -97,6 +120,7 @@ function addFiles(fileList) {
   const nextItems = files.map((file) => ({
     id: crypto.randomUUID(),
     file,
+    tool: state.tool,
     sourceUrl: URL.createObjectURL(file),
     resultUrl: "",
     taskId: "",
@@ -108,6 +132,7 @@ function addFiles(fileList) {
   if (!state.selectedId && nextItems[0]) {
     state.selectedId = nextItems[0].id;
   }
+  state.activePanel = "tasks";
   els.fileInput.value = "";
   render();
 }
@@ -116,6 +141,51 @@ function clearQueue() {
   state.items.forEach((item) => URL.revokeObjectURL(item.sourceUrl));
   state.items = [];
   state.selectedId = null;
+  render();
+}
+
+function removeQueueItem(id) {
+  if (state.busy) {
+    toast("处理中暂时不能移除任务");
+    return;
+  }
+  const index = state.items.findIndex((item) => item.id === id);
+  if (index < 0) {
+    return;
+  }
+
+  const [removed] = state.items.splice(index, 1);
+  URL.revokeObjectURL(removed.sourceUrl);
+  if (state.selectedId === id) {
+    const nextSelected = state.items[index] || state.items[index - 1] || null;
+    state.selectedId = nextSelected ? nextSelected.id : null;
+  }
+  render();
+}
+
+function queueHasResults() {
+  return state.items.some((item) => item.resultUrl || item.status === "done");
+}
+
+function resetQueueResults(tool) {
+  state.items.forEach((item) => {
+    Object.assign(item, {
+      resultUrl: "",
+      taskId: "",
+      status: "waiting",
+      statusText: "等待处理",
+      progress: 0,
+      tool,
+    });
+  });
+}
+
+function setTool(tool) {
+  state.tool = tool;
+  document.querySelectorAll("[data-tool]").forEach((item) => item.classList.toggle("is-active", item.dataset.tool === tool));
+  document.querySelectorAll("[data-options]").forEach((block) => {
+    block.classList.toggle("is-hidden", block.dataset.options !== tool);
+  });
   render();
 }
 
@@ -146,6 +216,56 @@ function saveApiKey(key) {
   }
 }
 
+function restoreResultHistory() {
+  try {
+    const saved = window.localStorage.getItem(RESULT_HISTORY_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    state.history = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    state.history = [];
+  }
+  pruneResultHistory();
+}
+
+function pruneResultHistory() {
+  const cutoff = Date.now() - RESULT_HISTORY_TTL;
+  const nextHistory = state.history.filter((entry) => entry.createdAt > cutoff && entry.resultUrl);
+  if (nextHistory.length !== state.history.length) {
+    state.history = nextHistory;
+    saveResultHistory();
+  } else {
+    state.history = nextHistory;
+  }
+}
+
+function saveResultHistory() {
+  try {
+    window.localStorage.setItem(RESULT_HISTORY_STORAGE_KEY, JSON.stringify(state.history));
+  } catch (error) {
+    toast("浏览器阻止了处理结果保存");
+  }
+}
+
+function addResultHistory(item) {
+  const entry = {
+    id: crypto.randomUUID(),
+    fileName: item.file.name,
+    tool: item.tool || state.tool,
+    resultUrl: item.resultUrl,
+    taskId: item.taskId,
+    createdAt: Date.now(),
+  };
+  state.history = [entry, ...state.history.filter((historyItem) => historyItem.resultUrl !== entry.resultUrl)];
+  pruneResultHistory();
+  saveResultHistory();
+}
+
+function clearResultHistory() {
+  state.history = [];
+  saveResultHistory();
+  render();
+}
+
 async function processQueue() {
   if (state.busy) return;
   if (!state.items.length) {
@@ -173,11 +293,12 @@ async function processQueue() {
 
 async function processItem(item) {
   state.selectedId = item.id;
+  item.tool = state.tool;
   updateItem(item, { status: "uploading", statusText: "上传图片中", progress: 12 });
 
   const formData = new FormData();
   formData.append("image", item.file);
-  formData.append("tool", state.tool);
+  formData.append("tool", item.tool);
   formData.append("apiKey", currentApiKey());
   formData.append("instanceType", els.instanceType.value);
   formData.append("cutoutMode", state.cutoutMode);
@@ -224,6 +345,7 @@ async function pollTask(item, taskId) {
         statusText: "处理完成",
         progress: 100,
       });
+      addResultHistory(item);
       return;
     }
 
@@ -262,11 +384,15 @@ function updateItem(item, patch) {
 }
 
 function render() {
+  pruneResultHistory();
   renderPreview();
   renderQueue();
+  renderHistory();
+  renderPanels();
   els.queueCounter.textContent = `${state.items.length} 张`;
   const done = state.items.filter((item) => item.status === "done").length;
   els.taskSummary.textContent = `${done} / ${state.items.length} 完成`;
+  els.historySummary.textContent = `${state.history.length} 条 · 近 24 小时`;
   els.startButton.disabled = state.busy;
 }
 
@@ -299,14 +425,22 @@ function renderQueue() {
     node.classList.toggle("is-error", item.status === "error");
     node.querySelector("img").src = item.sourceUrl;
     node.querySelector("strong").textContent = item.file.name;
-    node.querySelector("small").textContent = `${labels[state.tool]} · ${item.statusText}`;
+    const itemTool = item.status === "waiting" ? state.tool : item.tool || state.tool;
+    node.querySelector("small").textContent = `${labels[itemTool]} · ${item.statusText}`;
     node.querySelector(".progress-track span").style.width = `${item.progress}%`;
 
     const download = node.querySelector(".download-link");
     if (item.resultUrl) {
-      download.href = item.resultUrl;
+      download.href = downloadProxyUrl(item.resultUrl);
       download.classList.add("is-visible");
     }
+
+    const removeButton = node.querySelector(".queue-remove-button");
+    removeButton.disabled = state.busy;
+    removeButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      removeQueueItem(item.id);
+    });
 
     node.querySelector(".thumb-button").addEventListener("click", () => {
       state.selectedId = item.id;
@@ -314,6 +448,50 @@ function renderQueue() {
     });
     els.queueList.appendChild(node);
   });
+}
+
+function renderHistory() {
+  els.historyList.innerHTML = "";
+  state.history.forEach((item) => {
+    const node = els.historyTemplate.content.firstElementChild.cloneNode(true);
+    const thumb = node.querySelector(".thumb-button");
+    thumb.href = item.resultUrl;
+    node.querySelector("img").src = item.resultUrl;
+    node.querySelector("strong").textContent = item.fileName;
+    node.querySelector("small").textContent = `${labels[item.tool] || "AI处理"} · 可下载`;
+    node.querySelector(".history-time").textContent = formatHistoryTime(item.createdAt);
+
+    const download = node.querySelector(".download-link");
+    download.href = downloadProxyUrl(item.resultUrl);
+    els.historyList.appendChild(node);
+  });
+}
+
+function downloadProxyUrl(url) {
+  return `/api/download?url=${encodeURIComponent(url)}`;
+}
+
+function renderPanels() {
+  document.querySelectorAll("[data-panel]").forEach((button) => {
+    const isActive = button.dataset.panel === state.activePanel;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+  document.querySelectorAll(".queue-tab-panel").forEach((panel) => {
+    const isActive = panel.id === `${state.activePanel}Panel`;
+    panel.classList.toggle("is-active", isActive);
+    panel.hidden = !isActive;
+  });
+}
+
+function formatHistoryTime(timestamp) {
+  const formatter = new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${formatter.format(timestamp)} 生成`;
 }
 
 async function fetchJson(url, options = {}) {

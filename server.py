@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -23,6 +23,7 @@ HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))
 RUNNINGHUB_BASE = "https://www.runninghub.cn/openapi/v2"
 MAX_UPLOAD_BYTES = 24 * 1024 * 1024
+DOWNLOAD_HOST_PATTERN = re.compile(r"(^|\.)myqcloud\.com$|(^|\.)qcloud\.com$", re.I)
 
 
 TOOLS: dict[str, dict[str, Any]] = {
@@ -190,6 +191,19 @@ def request_runninghub(path: str, api_key: str, *, method: str = "POST", body: b
     return parsed
 
 
+def safe_download_url(value: str) -> str:
+    parsed = urlparse(value or "")
+    if parsed.scheme != "https" or not DOWNLOAD_HOST_PATTERN.search(parsed.hostname or ""):
+        raise ApiError(400, "不支持代理该下载地址")
+    return value
+
+
+def filename_from_url(value: str) -> str:
+    path_name = unquote(urlparse(value).path or "")
+    name = next((part for part in reversed(path_name.split("/")) if part), "result.png")
+    return re.sub(r'[\\/:*?"<>|]+', "_", name) or "result.png"
+
+
 def upload_to_runninghub(file_part: dict[str, Any], api_key: str) -> dict[str, Any]:
     boundary = f"----rhpanel{uuid.uuid4().hex}"
     filename = file_part["filename"]
@@ -262,15 +276,23 @@ class RunningHubPanelHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path == "/api/config":
-            self.send_json(
-                {
-                    "hasServerKey": has_server_key(),
-                    "tools": {key: {"name": value["name"], "endpoint": value["endpoint"]} for key, value in TOOLS.items()},
-                }
-            )
-            return
-        self.serve_static(parsed.path)
+        try:
+            if parsed.path == "/api/config":
+                self.send_json(
+                    {
+                        "hasServerKey": has_server_key(),
+                        "tools": {key: {"name": value["name"], "endpoint": value["endpoint"]} for key, value in TOOLS.items()},
+                    }
+                )
+                return
+            if parsed.path == "/api/download":
+                self.handle_download(parsed)
+                return
+            self.serve_static(parsed.path)
+        except ApiError as exc:
+            self.send_json({"ok": False, "message": exc.message, "details": exc.details}, exc.status)
+        except Exception as exc:  # pragma: no cover - defensive boundary for local tool use.
+            self.send_json({"ok": False, "message": "服务内部错误", "details": str(exc)}, 500)
 
     def do_POST(self) -> None:
         try:
@@ -323,6 +345,30 @@ class RunningHubPanelHandler(BaseHTTPRequestHandler):
         api_key = api_key_from(self, payload)
         query_response = request_runninghub("/query", api_key, body=json_bytes({"taskId": task_id}))
         self.send_json({"ok": True, "task": query_response})
+
+    def handle_download(self, parsed: Any) -> None:
+        query = parse_qs(parsed.query)
+        target_url = safe_download_url((query.get("url") or [""])[0])
+        request = Request(target_url, method="GET")
+        request.add_header("User-Agent", "Mozilla/5.0")
+        request.add_header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+
+        try:
+            with urlopen(request, timeout=90, context=ssl.create_default_context()) as response:
+                data = response.read()
+                content_type = response.headers.get("Content-Type") or "application/octet-stream"
+        except HTTPError as exc:
+            raise ApiError(exc.code, "下载图片失败", exc.read().decode("utf-8", errors="replace")) from exc
+        except URLError as exc:
+            raise ApiError(502, "无法下载图片", str(exc.reason)) from exc
+
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(filename_from_url(target_url))}")
+        self.send_header("Cache-Control", "private, max-age=300")
+        self.end_headers()
+        self.wfile.write(data)
 
     def serve_static(self, request_path: str) -> None:
         try:

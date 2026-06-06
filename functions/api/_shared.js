@@ -1,5 +1,6 @@
 const RUNNINGHUB_BASE = "https://www.runninghub.cn/openapi/v2";
 const MAX_UPLOAD_BYTES = 24 * 1024 * 1024;
+export const DOWNLOAD_HOST_PATTERN = /(^|\.)myqcloud\.com$|(^|\.)qcloud\.com$/i;
 
 export const TOOLS = {
   cutout: {
@@ -51,6 +52,27 @@ export function handleError(error) {
     return json({ ok: false, message: error.message, details: error.details }, error.status);
   }
   return json({ ok: false, message: "服务内部错误", details: String(error?.message || error) }, 500);
+}
+
+export function safeDownloadUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value || ""));
+  } catch (error) {
+    throw new ApiError(400, "下载地址不正确");
+  }
+
+  if (url.protocol !== "https:" || !DOWNLOAD_HOST_PATTERN.test(url.hostname)) {
+    throw new ApiError(400, "不支持代理该下载地址");
+  }
+
+  return url;
+}
+
+export function fileNameFromUrl(url) {
+  const pathName = decodeURIComponent(url.pathname || "");
+  const name = pathName.split("/").filter(Boolean).pop() || "result.png";
+  return name.replace(/[\\/:*?"<>|]+/g, "_") || "result.png";
 }
 
 export function serverKeys(env) {
