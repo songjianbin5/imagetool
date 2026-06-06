@@ -4,11 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>图片处理工具 煊原集团内部工具</title>
-  <link rel="stylesheet" href="./styles.css?v=20260602-1723">
-  <script defer src="./vendor/jszip.min.js"></script>
-  <script defer src="./vendor/gif.js"></script>
-  <script defer src="./vendor/gif-worker-inline.js"></script>
-  <script defer src="./script.js?v=20260602-1723"></script>
+  <link rel="stylesheet" href="/batch/styles.css?v=20260602-1723">
+  <script defer src="/batch/script.js?v=20260602-1723"></script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -45,13 +42,15 @@
             <strong>拖入图片，或点这里选择文件</strong>
           </label>
 
-          <div class="toolbar-row">
-            <button class="ghost-button" type="button" id="clearFilesButton">清空列表</button>
-          </div>
+          <div class="file-list-shell">
+            <div class="toolbar-row list-toolbar">
+              <button class="ghost-button" type="button" id="clearFilesButton">清空列表</button>
+            </div>
 
-          <div class="file-list" id="fileList">
-            <div class="empty-state">
-              <strong>还没有图片</strong>
+            <div class="file-list" id="fileList">
+              <div class="empty-state">
+                <strong>还没有图片</strong>
+              </div>
             </div>
           </div>
         </section>
@@ -286,7 +285,10 @@
           </article>
 
           <div class="action-bar">
-            <button class="primary-button" type="button" id="processButton">开始处理</button>
+            <button class="primary-button" type="button" id="processButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+              开始处理
+            </button>
             <button class="ghost-button" type="button" id="overwriteExportButton">覆盖写回</button>
             <button class="ghost-button" type="button" id="downloadAllButton">全部下载</button>
           </div>

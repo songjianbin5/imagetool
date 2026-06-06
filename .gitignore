@@ -1,2 +1,9 @@
-deploy-package/
-*.baiduyun.uploading.cfg
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
+node_modules/
+dist/
+build/
+*.log

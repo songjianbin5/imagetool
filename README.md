@@ -1,26 +1,59 @@
-# 线下渠道专用图片格式转换
+# 图片工具入口
 
-一个纯前端的图片处理工具页，适合直接作为 Web 端插件页面或静态站点使用。
+本项目合并了两个 Web 工具：
 
-## 已实现
+- `/`：入口主页
+- `/batch/`：图片处理工具，支持调整尺寸、转换格式、压缩图片大小
+- `/ai/`：AI 图片工作台，支持 AI 抠图、AI 修图、AI 高清放大
 
-- JPG / PNG / WEBP / GIF 格式互转
-- 压缩导出，并显示压缩后尺寸与体积变化
-- 等比改尺寸
-- 修改画布大小、锚点位置、背景色
-- 三类动作可组合后批量处理
-- 单张下载与批量 ZIP 下载
-- 选择输出文件夹后覆盖写回同名文件
+## 启动
 
-## 使用方式
+双击 `start.bat`，或在当前目录运行：
 
-1. 直接打开 [index.html](./index.html)
-2. 或用任意静态服务器托管当前目录
+```powershell
+python server.py
+```
 
-## 说明
+然后打开：
 
-- 处理顺序固定为：调整尺寸 -> 修改画布 -> 格式转换 / 压缩
-- GIF 当前按静态单帧导出，适合封面图、静态图转换
-- 覆盖写回依赖浏览器的 File System Access API，建议使用最新版 Chrome / Edge
-- Web 端无法直接改写通过上传控件选中的源文件；若要替换原图，请将原图所在文件夹选为输出目录
-- 如果输出格式发生变化，会按新的文件后缀写入，不会自动删除旧后缀文件
+```text
+http://127.0.0.1:8000/
+```
+
+## 目录结构
+
+```text
+public/
+  index.html        入口主页
+  home.css          入口主页样式
+  ai/               AI 图片工作台
+  batch/            批量图片处理工具
+server.py           静态页面服务 + RunningHub API 代理
+```
+
+## RunningHub API Key
+
+线上建议使用环境变量：
+
+```powershell
+$env:RUNNINGHUB_API_KEY="你的 API Key"
+python server.py
+```
+
+AI 图片工作台会通过 `server.py` 代理 RunningHub 的上传、提交和查询接口。
+
+## 线上部署
+
+当前版本包含 Python 后端代理，不能只上传静态文件完成全部功能。
+
+推荐：
+
+- Render / Railway / Fly.io / VPS：直接运行 `python server.py`
+- Cloudflare Pages：适合入口页和批量图片工具；AI 工作台需要额外改成 Pages Functions/Workers 代理 RunningHub API
+
+环境变量：
+
+```text
+RUNNINGHUB_API_KEY=你的 API Key
+PORT=平台提供的端口
+```

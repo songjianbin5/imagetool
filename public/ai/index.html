@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RunningHub AI 图片工作台</title>
+    <link rel="stylesheet" href="/ai/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>AI 图片工作台</h1>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="control-pane" aria-label="处理设置">
+          <label class="drop-zone" id="dropZone">
+            <input id="fileInput" type="file" accept="image/*" multiple />
+            <span class="drop-icon" aria-hidden="true">
+              <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                <path d="M576 282.496V704a64 64 0 0 1-128 0V282.496L301.248 429.248a64 64 0 0 1-90.496-90.496l256-256a64 64 0 0 1 90.496 0l256 256a64 64 0 1 1-90.496 90.496L576 282.496zM1024 704v256a64 64 0 0 1-64 64H64a64 64 0 0 1-64-64v-256a64 64 0 0 1 128 0v192h768v-192a64 64 0 0 1 128 0z" fill="#005AEC" stroke="none"></path>
+              </svg>
+            </span>
+            <strong>拖入图片，或点这里选择文件</strong>
+            <small>支持多图顺序处理，单张建议不超过 24MB</small>
+          </label>
+
+          <div class="tool-switch" role="tablist" aria-label="功能选择">
+            <button class="tool-card is-active" type="button" data-tool="cutout">
+              <span class="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 1024 1024">
+                  <path d="M632.6016 593.4336c10.24 0 19.968 3.5328 27.776 9.984l3.2256 2.9696 243.968 245.888c17.0752 17.2032 17.0752 45.2608 0.0768 62.5408a43.3408 43.3408 0 0 1-30.976 12.9536c-10.24 0-19.968-3.5072-27.776-9.984l-3.2256-2.9696L601.6 668.928a44.5184 44.5184 0 0 1 0-62.5152 43.3408 43.3408 0 0 1 30.976-12.9792zM563.2 768l27.136 49.6128L640 844.7488l-49.664 27.1616L563.2 921.6l-27.136-49.664L486.4 844.8l49.6128-27.136 27.136-49.664z m-358.144-76.8l36.3264 66.3808 66.432 36.3008-66.432 36.3264-36.3264 66.432-36.3008-66.432v0.0512L102.4 793.9328l66.3296-36.3008L205.0304 691.2zM641.024 170.368l-0.2048 4.864-9.0112 150.272 108.3136 102.4c45.4912 43.0848 34.6624 90.7776-22.912 108.1088l-4.7616 1.3312-143.8208 37.632-63.616 136.2432c-26.2912 56.4224-74.0352 61.0304-108.1856 11.5456l-2.9184-4.352-80.256-126.8992-147.4048-18.7648c-61.952-7.8848-81.3824-52.3776-45.0048-100.4544l3.072-3.9168 94.8992-116.224-28.0576-147.7888c-11.648-61.3632 25.088-93.2352 81.92-73.0368l4.5312 1.6896 138.1888 54.7072 130.2272-72.0896c54.7328-30.3616 96.4608-5.7344 94.976 54.7328z m-106.9056 42.1888l-2.9184 1.4848-109.5168 60.672-116.4032-46.08c-18.9184-7.4752-31.5392 1.9456-29.44 20.5568l0.4608 3.1744 23.552 124.16-79.4624 97.28c-12.8768 15.872-7.8592 30.7968 10.6752 34.5856l3.2256 0.5376 124.032 15.8208 67.328 106.2144c10.9312 17.28 26.4704 17.0752 35.84 0.6656l1.5872-3.072 53.248-114.0224 120.9856-31.616c19.712-5.1456 24.3712-20.1984 11.52-34.3552l-2.304-2.3552-91.136-86.2464 7.552-126.1568c1.2032-20.224-11.5968-29.1072-28.8256-21.248zM857.5744 128.256l40.7296 74.4704L972.8 243.4048 898.304 284.16 857.6 358.656 816.8192 284.16 742.4 243.456l74.4448-40.7296 40.7296-74.496z"></path>
+                </svg>
+              </span>
+              <span>
+                <strong>AI抠图</strong>
+                <small>透明底 / 白底</small>
+              </span>
+            </button>
+            <button class="tool-card" type="button" data-tool="retouch">
+              <span class="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 1024 1024">
+                  <path d="M891.306667 265.472L849.92 174.08l-91.392-41.301333 91.392-41.386667L891.306667 0l41.386666 91.392 91.306667 41.386667-91.306667 41.301333z m-586.837334 0L263.082667 174.08l-91.392-41.301333 91.392-41.386667L304.469333 0l41.386667 91.392 91.392 41.386667-91.392 41.301333z m586.837334 586.837333l-41.386667-91.306666-91.392-41.386667 91.392-41.386667 41.386667-91.221333 41.386666 91.221333 91.306667 41.472-91.306667 41.386667-41.386666 91.306667z m-761.002667 157.013334L14.848 893.866667a47.445333 47.445333 0 0 1-14.592-31.146667 42.666667 42.666667 0 0 1 14.592-33.450667l547.84-547.925333a50.005333 50.005333 0 0 1 70.656 0l109.568 109.653333a49.749333 49.749333 0 0 1 0 70.570667l-547.84 547.84a42.666667 42.666667 0 0 1-64.512 0z m28.074667-69.376L539.392 558.933333l-75.52-75.52-380.757333 381.098667 75.52 75.52z"></path>
+                </svg>
+              </span>
+              <span>
+                <strong>AI修图</strong>
+                <small>万能精修</small>
+              </span>
+            </button>
+            <button class="tool-card" type="button" data-tool="upscale">
+              <span class="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 1026 1024">
+                  <path d="M163.2 94.08a48 48 0 0 0-67.84 0 48 48 0 0 0 0 67.84l67.84-67.84z m145.28 279.04a48 48 0 0 0 67.84 0 48 48 0 0 0 0-67.84L308.48 373.12z m-213.12-211.2l213.12 211.2 67.84-67.84-213.12-211.2-67.84 67.84zM95.36 859.52a48 48 0 0 0 67.84 68.48l-67.84-68.48z m280.96-142.72a48 48 0 0 0-67.84-68.48l67.84 68.48z m-213.12 211.2l213.12-211.2-67.84-68.48-213.12 211.2 67.84 68.48zM863.36 928a48 48 0 0 0 67.84-67.84l-67.84 67.84z m-143.36-279.04a47.36 47.36 0 0 0-67.84 0 48 48 0 0 0 0 67.84l67.84-67.84z m211.2 211.2l-211.2-211.2-67.84 67.84 211.2 211.2 67.84-67.84zM929.28 161.92a48 48 0 0 0 0-67.84 49.28 49.28 0 0 0-68.48 0l68.48 67.84z m-279.68 143.36a48 48 0 0 0 0 67.84 49.28 49.28 0 0 0 68.48 0l-68.48-67.84z m211.2-211.2l-211.2 211.2 68.48 67.84 211.2-211.2-68.48-67.84z"></path>
+                  <path d="M704 80a48 48 0 0 0 0 96v-96zM896 128h48a48.64 48.64 0 0 0-48-48V128z m-48 192a48 48 0 0 0 96 0zM704 176h192v-96h-192v96zM849.28 128v192h96V128zM945.28 704a48 48 0 0 0-96 0zM896 896v48a48.64 48.64 0 0 0 48-48z m-192-48a48 48 0 0 0 0 96v-96zM849.28 704v192h96v-192z m46.72 144h-192v96h192v-96zM320 944a48 48 0 0 0 0-96v96zM128 896h-46.72a48 48 0 0 0 48 48V896z m48-192a48 48 0 0 0-96 0zM320 848H128v96h192v-96zM177.28 896v-192h-96v192zM81.28 320a48 48 0 0 0 96 0zM128 128v-48a48 48 0 0 0-46.72 48z m192 48a48 48 0 0 0 0-96v96zM177.28 320V128h-96v192zM128 176h192v-96H128v96z"></path>
+                </svg>
+              </span>
+              <span>
+                <strong>高清放大</strong>
+                <small>SeedVR2.5</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="field-grid credential-grid" hidden>
+            <input id="apiKey" type="hidden" value="" />
+            <input id="instanceType" type="hidden" value="plus" />
+          </div>
+
+          <div class="option-block" data-options="cutout">
+            <div class="segmented" aria-label="抠图背景">
+              <button class="is-active" type="button" data-cutout-mode="white">白底图</button>
+              <button type="button" data-cutout-mode="transparent">透明PNG</button>
+            </div>
+            <div class="field-grid">
+              <label class="field">
+                <span>主体名称</span>
+                <input id="subject" type="text" value="主体" />
+              </label>
+              <label class="field">
+                <span>处理分辨率</span>
+                <select id="resolution">
+                  <option value="512">512</option>
+                  <option value="768">768</option>
+                  <option value="1024" selected>1024</option>
+                  <option value="1280">1280</option>
+                  <option value="1536">1536</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="option-block is-hidden" data-options="upscale">
+            <label class="field">
+              <span>修复后分辨率</span>
+              <select id="repairResolution">
+                <option value="0">8K</option>
+                <option value="1">4K</option>
+                <option value="2" selected>2K</option>
+                <option value="3">1K</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="option-block is-hidden" data-options="retouch">
+            <p class="hint">AI修图接口只需要上传原图，系统会自动完成 2-4K 精修。</p>
+          </div>
+
+          <div class="action-row">
+            <button class="primary-button" id="startButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+              开始处理
+            </button>
+          </div>
+        </section>
+
+        <section class="preview-pane" aria-label="图片预览和结果">
+          <div class="preview-header">
+            <div>
+              <h2 id="selectedName">未选择图片</h2>
+            </div>
+            <div class="counter" id="queueCounter">0 张</div>
+          </div>
+
+          <div class="preview-grid">
+            <div class="image-stage">
+              <div class="stage-label">原图</div>
+              <img id="sourcePreview" alt="原图预览" />
+              <div class="empty-state" id="sourceEmpty">图片会显示在这里</div>
+            </div>
+            <div class="image-stage result-stage">
+              <div class="stage-label">处理后</div>
+              <img id="resultPreview" alt="结果预览" />
+              <div class="empty-state" id="resultEmpty">结果会显示在这里</div>
+            </div>
+          </div>
+
+          <div class="queue-panel">
+            <div class="queue-title">
+              <h3>任务列表</h3>
+              <div class="queue-actions">
+                <span id="taskSummary">0 / 0 完成</span>
+                <button class="ghost-button" id="clearButton" type="button">清空列表</button>
+              </div>
+            </div>
+            <div class="queue-list" id="queueList"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="queueItemTemplate">
+      <article class="queue-item">
+        <button class="thumb-button" type="button">
+          <img alt="" />
+        </button>
+        <div class="queue-meta">
+          <strong></strong>
+          <small></small>
+          <div class="progress-track"><span></span></div>
+        </div>
+        <a class="download-link" target="_blank" rel="noreferrer">下载</a>
+      </article>
+    </template>
+
+    <script src="/ai/app.js" defer></script>
+  </body>
+</html>

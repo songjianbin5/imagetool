@@ -221,6 +221,51 @@ const renderCache = {
   statusText: "",
 };
 let gifWorkerBlobUrl = "";
+const lazyScriptPromises = new Map();
+
+function loadScriptOnce(src, globalName) {
+  if (globalName && typeof window[globalName] !== "undefined") {
+    return Promise.resolve(window[globalName]);
+  }
+
+  if (lazyScriptPromises.has(src)) {
+    return lazyScriptPromises.get(src);
+  }
+
+  const promise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[data-lazy-src="${src}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(globalName ? window[globalName] : undefined), { once: true });
+      existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.defer = true;
+    script.dataset.lazySrc = src;
+    script.onload = () => resolve(globalName ? window[globalName] : undefined);
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+
+  lazyScriptPromises.set(src, promise);
+  return promise;
+}
+
+async function ensureZipLibrary() {
+  await loadScriptOnce("/batch/vendor/jszip.min.js", "JSZip");
+  if (typeof JSZip === "undefined") {
+    throw new Error("ZIP 打包依赖加载失败。");
+  }
+}
+
+async function ensureGifLibrary() {
+  await loadScriptOnce("/batch/vendor/gif.js", "GIF");
+  if (typeof GIF === "undefined") {
+    throw new Error("GIF 导出依赖加载失败。");
+  }
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   cacheElements();
@@ -1056,6 +1101,7 @@ function updateControlsState() {
   elements.presetNameInput.disabled = busy;
   elements.savePresetButton.disabled = busy;
   elements.deletePresetButton.disabled = busy || !selectedPreset || selectedPreset.source !== "user";
+  elements.clearFilesButton.disabled = busy || !hasFiles;
   elements.processButton.disabled = busy || !hasFiles;
   elements.downloadAllButton.disabled = busy || state.results.size === 0;
   elements.pickExportFolderButton.disabled = busy || !overwriteEnabled || !supportsWriteBack;
@@ -1694,7 +1740,10 @@ async function downloadAllResults() {
     return;
   }
 
-  if (typeof JSZip === "undefined") {
+  try {
+    await ensureZipLibrary();
+  } catch (error) {
+    console.error(error);
     setStatus("批量打包依赖未加载，浏览器将逐张触发下载。");
     for (const result of state.results.values()) {
       downloadBlob(result.outputUrl, result.outputName);
@@ -2109,7 +2158,9 @@ function surfaceToBlob(surface, mimeType, quality) {
   });
 }
 
-function exportGif(canvas, quality, fillColor) {
+async function exportGif(canvas, quality, fillColor) {
+  await ensureGifLibrary();
+
   return new Promise((resolve, reject) => {
     if (typeof GIF === "undefined") {
       reject(new Error("GIF 导出依赖未加载。"));
@@ -2138,12 +2189,7 @@ function getGifWorkerScript() {
     return gifWorkerBlobUrl;
   }
 
-  if (typeof window !== "undefined" && typeof window.__gifWorkerSource === "string" && window.__gifWorkerSource.length > 0) {
-    gifWorkerBlobUrl = URL.createObjectURL(new Blob([window.__gifWorkerSource], { type: "application/javascript" }));
-    return gifWorkerBlobUrl;
-  }
-
-  return "./vendor/gif.worker.js";
+  return "/batch/vendor/gif.worker.js";
 }
 
 async function decodeImageSource(source, fallbackUrl = "") {
