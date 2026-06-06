@@ -52,7 +52,7 @@ svg {
 
 .home-header h1 {
   margin: 0;
-  font-size: clamp(34px, 6vw, 54px);
+  font-size: 1.5rem;
   line-height: 1.12;
 }
 
@@ -100,13 +100,18 @@ svg {
 
 .entry-icon {
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 64px;
+  height: 64px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 22px;
+  border-radius: 24px;
   background: rgba(10, 132, 255, 0.1);
   color: var(--blue);
+}
+
+.entry-icon svg {
+  width: 31px;
+  height: 31px;
 }
 
 .entry-card:hover .entry-icon,
@@ -166,8 +171,8 @@ svg {
   }
 
   .entry-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 18px;
+    width: 53px;
+    height: 53px;
+    border-radius: 20px;
   }
 }

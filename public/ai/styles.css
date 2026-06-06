@@ -332,6 +332,10 @@ h3 {
   box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.12);
 }
 
+.field input::placeholder {
+  color: #94a3b8;
+}
+
 .option-block {
   margin-top: 4px;
 }
@@ -571,21 +575,33 @@ h3 {
 .queue-item {
   position: relative;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
+  grid-template-columns: 58px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   min-height: 72px;
-  padding: 8px 38px 8px 8px;
+  padding: 8px 92px 8px 8px;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.72);
+  content-visibility: auto;
+  contain-intrinsic-size: 72px;
 }
 
-.queue-remove-button {
+.history-item {
+  padding-right: 82px;
+}
+
+.queue-item-actions {
   position: absolute;
   top: 9px;
   right: 9px;
   z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-remove-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -692,6 +708,7 @@ h3 {
 .download-link {
   display: none;
   min-height: 34px;
+  padding: 0 14px;
   background: rgba(25, 135, 84, 0.1);
   color: var(--green);
 }
@@ -800,11 +817,10 @@ h3 {
 
   .queue-item {
     grid-template-columns: 52px minmax(0, 1fr);
-    padding-right: 38px;
+    padding-right: 90px;
   }
 
-  .download-link {
-    grid-column: 2;
-    justify-self: start;
+  .history-item {
+    padding-right: 82px;
   }
 }

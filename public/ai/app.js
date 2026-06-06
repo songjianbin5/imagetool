@@ -43,6 +43,12 @@ const labels = {
 const API_KEY_STORAGE_KEY = "rhPanel.runningHubApiKey";
 const RESULT_HISTORY_STORAGE_KEY = "rhPanel.resultHistory";
 const RESULT_HISTORY_TTL = 24 * 60 * 60 * 1000;
+const RESULT_HISTORY_LIMIT = 80;
+const toolButtons = Array.from(document.querySelectorAll("[data-tool]"));
+const panelButtons = Array.from(document.querySelectorAll("[data-panel]"));
+const cutoutModeButtons = Array.from(document.querySelectorAll("[data-cutout-mode]"));
+const optionBlocks = Array.from(document.querySelectorAll("[data-options]"));
+const tabPanels = Array.from(document.querySelectorAll(".queue-tab-panel"));
 
 async function boot() {
   bindEvents();
@@ -58,7 +64,7 @@ async function boot() {
 }
 
 function bindEvents() {
-  document.querySelectorAll("[data-tool]").forEach((button) => {
+  toolButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const nextTool = button.dataset.tool;
       if (state.tool === nextTool) {
@@ -79,17 +85,17 @@ function bindEvents() {
     });
   });
 
-  document.querySelectorAll("[data-panel]").forEach((button) => {
+  panelButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.activePanel = button.dataset.panel;
-      render();
+      render({ panels: true });
     });
   });
 
-  document.querySelectorAll("[data-cutout-mode]").forEach((button) => {
+  cutoutModeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.cutoutMode = button.dataset.cutoutMode;
-      document.querySelectorAll("[data-cutout-mode]").forEach((item) => item.classList.toggle("is-active", item === button));
+      cutoutModeButtons.forEach((item) => item.classList.toggle("is-active", item === button));
     });
   });
 
@@ -182,8 +188,8 @@ function resetQueueResults(tool) {
 
 function setTool(tool) {
   state.tool = tool;
-  document.querySelectorAll("[data-tool]").forEach((item) => item.classList.toggle("is-active", item.dataset.tool === tool));
-  document.querySelectorAll("[data-options]").forEach((block) => {
+  toolButtons.forEach((item) => item.classList.toggle("is-active", item.dataset.tool === tool));
+  optionBlocks.forEach((block) => {
     block.classList.toggle("is-hidden", block.dataset.options !== tool);
   });
   render();
@@ -255,9 +261,10 @@ function addResultHistory(item) {
     taskId: item.taskId,
     createdAt: Date.now(),
   };
-  state.history = [entry, ...state.history.filter((historyItem) => historyItem.resultUrl !== entry.resultUrl)];
+  state.history = [entry, ...state.history.filter((historyItem) => historyItem.resultUrl !== entry.resultUrl)].slice(0, RESULT_HISTORY_LIMIT);
   pruneResultHistory();
   saveResultHistory();
+  render({ history: true, summary: true });
 }
 
 function clearResultHistory() {
@@ -279,7 +286,7 @@ async function processQueue() {
 
   state.busy = true;
   els.startButton.disabled = true;
-  render();
+  render({ queue: true, summary: true });
 
   for (const item of state.items) {
     if (item.status === "done") continue;
@@ -288,7 +295,7 @@ async function processQueue() {
 
   state.busy = false;
   els.startButton.disabled = false;
-  render();
+  render({ queue: true, summary: true });
 }
 
 async function processItem(item) {
@@ -380,20 +387,25 @@ function statusText(status) {
 
 function updateItem(item, patch) {
   Object.assign(item, patch);
-  render();
+  render({ preview: true, queue: true, summary: true });
 }
 
-function render() {
+function render(parts = {}) {
+  const shouldRenderAll = !Object.keys(parts).length;
   pruneResultHistory();
-  renderPreview();
-  renderQueue();
-  renderHistory();
-  renderPanels();
+  if (shouldRenderAll || parts.preview) renderPreview();
+  if (shouldRenderAll || parts.queue) renderQueue();
+  if (shouldRenderAll || parts.history) renderHistory();
+  if (shouldRenderAll || parts.panels) renderPanels();
+  if (shouldRenderAll || parts.summary) renderSummary();
+  els.startButton.disabled = state.busy;
+}
+
+function renderSummary() {
   els.queueCounter.textContent = `${state.items.length} 张`;
   const done = state.items.filter((item) => item.status === "done").length;
   els.taskSummary.textContent = `${done} / ${state.items.length} 完成`;
   els.historySummary.textContent = `${state.history.length} 条 · 近 24 小时`;
-  els.startButton.disabled = state.busy;
 }
 
 function renderPreview() {
@@ -406,7 +418,9 @@ function renderPreview() {
 function setStage(img, empty, url) {
   const stage = img.closest(".image-stage");
   if (url) {
-    img.src = url;
+    if (img.getAttribute("src") !== url) {
+      img.src = url;
+    }
     stage.classList.add("has-image");
     empty.hidden = true;
   } else {
@@ -418,12 +432,16 @@ function setStage(img, empty, url) {
 
 function renderQueue() {
   els.queueList.innerHTML = "";
+  const fragment = document.createDocumentFragment();
   state.items.forEach((item) => {
     const node = els.template.content.firstElementChild.cloneNode(true);
     node.classList.toggle("is-active", item.id === state.selectedId);
     node.classList.toggle("is-done", item.status === "done");
     node.classList.toggle("is-error", item.status === "error");
-    node.querySelector("img").src = item.sourceUrl;
+    const image = node.querySelector("img");
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = item.sourceUrl;
     node.querySelector("strong").textContent = item.file.name;
     const itemTool = item.status === "waiting" ? state.tool : item.tool || state.tool;
     node.querySelector("small").textContent = `${labels[itemTool]} · ${item.statusText}`;
@@ -444,27 +462,33 @@ function renderQueue() {
 
     node.querySelector(".thumb-button").addEventListener("click", () => {
       state.selectedId = item.id;
-      render();
+      render({ preview: true, queue: true });
     });
-    els.queueList.appendChild(node);
+    fragment.appendChild(node);
   });
+  els.queueList.appendChild(fragment);
 }
 
 function renderHistory() {
   els.historyList.innerHTML = "";
-  state.history.forEach((item) => {
+  const fragment = document.createDocumentFragment();
+  state.history.slice(0, RESULT_HISTORY_LIMIT).forEach((item) => {
     const node = els.historyTemplate.content.firstElementChild.cloneNode(true);
     const thumb = node.querySelector(".thumb-button");
     thumb.href = item.resultUrl;
-    node.querySelector("img").src = item.resultUrl;
+    const image = node.querySelector("img");
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = item.resultUrl;
     node.querySelector("strong").textContent = item.fileName;
     node.querySelector("small").textContent = `${labels[item.tool] || "AI处理"} · 可下载`;
     node.querySelector(".history-time").textContent = formatHistoryTime(item.createdAt);
 
     const download = node.querySelector(".download-link");
     download.href = downloadProxyUrl(item.resultUrl);
-    els.historyList.appendChild(node);
+    fragment.appendChild(node);
   });
+  els.historyList.appendChild(fragment);
 }
 
 function downloadProxyUrl(url) {
@@ -472,12 +496,12 @@ function downloadProxyUrl(url) {
 }
 
 function renderPanels() {
-  document.querySelectorAll("[data-panel]").forEach((button) => {
+  panelButtons.forEach((button) => {
     const isActive = button.dataset.panel === state.activePanel;
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-selected", String(isActive));
   });
-  document.querySelectorAll(".queue-tab-panel").forEach((panel) => {
+  tabPanels.forEach((panel) => {
     const isActive = panel.id === `${state.activePanel}Panel`;
     panel.classList.toggle("is-active", isActive);
     panel.hidden = !isActive;
