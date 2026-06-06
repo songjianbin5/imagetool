@@ -760,6 +760,7 @@ h3 {
 
   .topbar {
     text-align: center;
+    display: none;
   }
 
   h1 {

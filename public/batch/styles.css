@@ -1470,6 +1470,7 @@ img {
   .hero-panel {
     border-radius: 0;
     margin-bottom: 22px;
+    display: none;
   }
 
   .upload-panel,
