@@ -49,6 +49,7 @@ const panelButtons = Array.from(document.querySelectorAll("[data-panel]"));
 const cutoutModeButtons = Array.from(document.querySelectorAll("[data-cutout-mode]"));
 const optionBlocks = Array.from(document.querySelectorAll("[data-options]"));
 const tabPanels = Array.from(document.querySelectorAll(".queue-tab-panel"));
+const isWechatBrowser = /MicroMessenger/i.test(navigator.userAgent || "");
 
 async function boot() {
   bindEvents();
@@ -449,7 +450,7 @@ function renderQueue() {
 
     const download = node.querySelector(".download-link");
     if (item.resultUrl) {
-      download.href = downloadProxyUrl(item.resultUrl);
+      download.href = downloadUrl(item.resultUrl);
       download.classList.add("is-visible");
     }
 
@@ -485,13 +486,16 @@ function renderHistory() {
     node.querySelector(".history-time").textContent = formatHistoryTime(item.createdAt);
 
     const download = node.querySelector(".download-link");
-    download.href = downloadProxyUrl(item.resultUrl);
+    download.href = downloadUrl(item.resultUrl);
     fragment.appendChild(node);
   });
   els.historyList.appendChild(fragment);
 }
 
-function downloadProxyUrl(url) {
+function downloadUrl(url) {
+  if (!isWechatBrowser) {
+    return url;
+  }
   return `/api/download?url=${encodeURIComponent(url)}`;
 }
 
