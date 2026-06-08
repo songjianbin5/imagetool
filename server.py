@@ -45,10 +45,11 @@ TOOLS: dict[str, dict[str, Any]] = {
     },
     "upscale": {
         "name": "高清放大",
-        "endpoint": "/run/ai-app/1961636707420585985",
-        "imageNode": {"nodeId": "3", "fieldName": "image", "description": "上传图像"},
+        "endpoint": "/run/ai-app/2028382324844404738",
+        "imageNode": {"nodeId": "36", "fieldName": "image", "description": "图片输入"},
         "options": [
-            {"nodeId": "27", "fieldName": "select", "fieldValue": "2", "description": "修复后分辨率"},
+            {"nodeId": "82", "fieldName": "index", "fieldValue": "2", "description": "分辨率"},
+            {"nodeId": "85", "fieldName": "value", "fieldValue": "100", "description": "Seed"},
         ],
     },
 }
@@ -262,9 +263,14 @@ def build_node_info(tool_id: str, image_value: str, fields: dict[str, Any]) -> l
         )
     elif tool_id == "upscale":
         repair_resolution = str(fields.get("repairResolution", "2") or "2").strip()
-        if repair_resolution not in {"0", "1", "2", "3"}:
+        if repair_resolution not in {"1", "2", "3", "4", "5", "6"}:
             repair_resolution = "2"
-        nodes.append({"nodeId": "27", "fieldName": "select", "fieldValue": repair_resolution, "description": "修复后分辨率"})
+        nodes.extend(
+            [
+                {"nodeId": "82", "fieldName": "index", "fieldValue": repair_resolution, "description": "分辨率"},
+                {"nodeId": "85", "fieldName": "value", "fieldValue": "100", "description": "Seed"},
+            ]
+        )
     else:
         nodes.extend(dict(item) for item in tool["options"])
 
