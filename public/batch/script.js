@@ -2256,36 +2256,48 @@ async function exportAnimatedGif(file, quality, fillColor) {
     throw new Error("GIF 导出依赖未加载。");
   }
 
-  const frameSet = decodeGifFramesFromBuffer(await file.arrayBuffer());
-  const { width, height, frames } = frameSet;
-  const gif = new GIF({
-    workers: 2,
-    quality: gifEncoderQuality(quality),
-    width,
-    height,
-    workerScript: getGifWorkerScript(),
-    background: fillColor,
-  });
   const frameStep = gifFrameStep(quality);
   const fillRgb = parseHexColor(fillColor);
+  let gif = null;
+  let width = 0;
+  let height = 0;
   let pendingDelay = 0;
   let outputFrames = 0;
+  let lastSkippedFrameData = null;
 
-  for (let index = 0; index < frames.length; index += 1) {
-    const frame = frames[index];
+  const frameSet = await decodeGifFramesFromBuffer(await file.arrayBuffer(), async (frame, frameIndex, meta) => {
+    if (!gif) {
+      width = meta.width;
+      height = meta.height;
+      gif = new GIF({
+        workers: 2,
+        quality: gifEncoderQuality(quality),
+        width,
+        height,
+        workerScript: getGifWorkerScript(),
+        background: fillColor,
+      });
+    }
+
     pendingDelay += frame.delay;
 
-    if (index % frameStep === 0 || index === frames.length - 1) {
-      gif.addFrame(createCompositedImageData(frame.data, width, height, fillRgb), {
-        delay: Math.max(GIF_MIN_FRAME_DELAY, Math.round(pendingDelay)),
-      });
+    if (frameIndex % frameStep === 0) {
+      addCompositedGifFrame(gif, frame.data, width, height, fillRgb, pendingDelay);
       pendingDelay = 0;
       outputFrames += 1;
+      lastSkippedFrameData = null;
+    } else {
+      lastSkippedFrameData = frame.data;
     }
+  });
 
-    if (index % 8 === 0) {
-      await yieldToBrowser();
-    }
+  if (!gif) {
+    throw new Error("GIF 没有可导出的帧。");
+  }
+
+  if (lastSkippedFrameData && pendingDelay > 0) {
+    addCompositedGifFrame(gif, lastSkippedFrameData, width, height, fillRgb, pendingDelay);
+    outputFrames += 1;
   }
 
   if (!outputFrames) {
@@ -2297,10 +2309,16 @@ async function exportAnimatedGif(file, quality, fillColor) {
     blob,
     width,
     height,
-    frameCount: frames.length,
+    frameCount: frameSet.frameCount,
     outputFrames,
     frameStep,
   };
+}
+
+function addCompositedGifFrame(gif, sourceData, width, height, fillRgb, delay) {
+  gif.addFrame(createCompositedImageData(sourceData, width, height, fillRgb), {
+    delay: Math.max(GIF_MIN_FRAME_DELAY, Math.round(delay)),
+  });
 }
 
 function parseHexColor(color) {
@@ -2313,23 +2331,24 @@ function parseHexColor(color) {
 }
 
 function createCompositedImageData(sourceData, width, height, fillRgb) {
-  const output = new Uint8ClampedArray(sourceData.length);
-
   for (let offset = 0; offset < sourceData.length; offset += 4) {
     const alpha = sourceData[offset + 3] / 255;
-    const inverseAlpha = 1 - alpha;
-    output[offset] = Math.round(sourceData[offset] * alpha + fillRgb.r * inverseAlpha);
-    output[offset + 1] = Math.round(sourceData[offset + 1] * alpha + fillRgb.g * inverseAlpha);
-    output[offset + 2] = Math.round(sourceData[offset + 2] * alpha + fillRgb.b * inverseAlpha);
-    output[offset + 3] = 255;
+    if (alpha < 1) {
+      const inverseAlpha = 1 - alpha;
+      sourceData[offset] = Math.round(sourceData[offset] * alpha + fillRgb.r * inverseAlpha);
+      sourceData[offset + 1] = Math.round(sourceData[offset + 1] * alpha + fillRgb.g * inverseAlpha);
+      sourceData[offset + 2] = Math.round(sourceData[offset + 2] * alpha + fillRgb.b * inverseAlpha);
+      sourceData[offset + 3] = 255;
+    }
   }
 
-  return new ImageData(output, width, height);
+  return new ImageData(sourceData, width, height);
 }
 
-function decodeGifFramesFromBuffer(buffer) {
+async function decodeGifFramesFromBuffer(buffer, onFrame) {
   const bytes = new Uint8Array(buffer);
   let offset = 0;
+  const shouldCollectFrames = typeof onFrame !== "function";
 
   const readByte = () => {
     if (offset >= bytes.length) {
@@ -2349,10 +2368,12 @@ function decodeGifFramesFromBuffer(buffer) {
   };
 
   const readColorTable = (length) => {
-    const table = [];
-    for (let index = 0; index < length; index += 1) {
-      table.push([readByte(), readByte(), readByte()]);
+    const byteLength = length * 3;
+    if (offset + byteLength > bytes.length) {
+      throw new Error("GIF 颜色表不完整。");
     }
+    const table = bytes.subarray(offset, offset + byteLength);
+    offset += byteLength;
     return table;
   };
 
@@ -2413,7 +2434,8 @@ function decodeGifFramesFromBuffer(buffer) {
   readByte();
 
   const globalColorTable = hasGlobalColorTable ? readColorTable(globalColorTableSize) : null;
-  const frames = [];
+  const frames = shouldCollectFrames ? [] : null;
+  let frameCount = 0;
   let canvas = new Uint8ClampedArray(width * height * 4);
   let graphicControl = createDefaultGifGraphicControl();
 
@@ -2490,19 +2512,30 @@ function decodeGifFramesFromBuffer(buffer) {
           continue;
         }
 
-        const color = colorTable[colorIndex] || [0, 0, 0];
+        const colorOffset = colorIndex * 3;
         const targetOffset = (targetY * width + targetX) * 4;
-        canvas[targetOffset] = color[0];
-        canvas[targetOffset + 1] = color[1];
-        canvas[targetOffset + 2] = color[2];
+        canvas[targetOffset] = colorTable[colorOffset] || 0;
+        canvas[targetOffset + 1] = colorTable[colorOffset + 1] || 0;
+        canvas[targetOffset + 2] = colorTable[colorOffset + 2] || 0;
         canvas[targetOffset + 3] = 255;
       }
     }
 
-    frames.push({
+    const frame = {
       delay: graphicControl.delay,
       data: new Uint8ClampedArray(canvas),
-    });
+    };
+
+    if (shouldCollectFrames) {
+      frames.push(frame);
+    } else {
+      await onFrame(frame, frameCount, { width, height });
+    }
+    frameCount += 1;
+
+    if (frameCount % 8 === 0) {
+      await yieldToBrowser();
+    }
 
     if (graphicControl.disposal === 2) {
       clearGifFrameRegion(canvas, width, height, left, top, frameWidth, frameHeight);
@@ -2513,11 +2546,11 @@ function decodeGifFramesFromBuffer(buffer) {
     graphicControl = createDefaultGifGraphicControl();
   }
 
-  if (!frames.length) {
+  if (!frameCount) {
     throw new Error("GIF 没有可导出的帧。");
   }
 
-  return { width, height, frames };
+  return shouldCollectFrames ? { width, height, frames } : { width, height, frameCount };
 }
 
 function createDefaultGifGraphicControl() {
@@ -2557,7 +2590,8 @@ function lzwDecodeGifData(minCodeSize, data, expectedLength) {
   let nextCode = endCode + 1;
   let dictionary = [];
   let bitOffset = 0;
-  const output = [];
+  const output = new Uint8Array(expectedLength);
+  let outputOffset = 0;
 
   const resetDictionary = () => {
     dictionary = [];
@@ -2609,8 +2643,9 @@ function lzwDecodeGifData(minCodeSize, data, expectedLength) {
     }
 
     for (const value of entry) {
-      output.push(value);
-      if (output.length >= expectedLength) {
+      output[outputOffset] = value;
+      outputOffset += 1;
+      if (outputOffset >= expectedLength) {
         break;
       }
     }
@@ -2624,12 +2659,12 @@ function lzwDecodeGifData(minCodeSize, data, expectedLength) {
     }
 
     previousEntry = entry;
-    if (output.length >= expectedLength) {
+    if (outputOffset >= expectedLength) {
       break;
     }
   }
 
-  return Uint8Array.from(output.slice(0, expectedLength));
+  return outputOffset === expectedLength ? output : output.slice(0, outputOffset);
 }
 
 function deinterlaceGifIndices(indices, width, height) {
