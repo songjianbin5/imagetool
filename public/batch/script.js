@@ -8,6 +8,8 @@ const MIME_EXTENSION_MAP = {
 const SUPPORTED_EXPORT_TYPES = new Set(Object.keys(MIME_EXTENSION_MAP));
 const FILE_READ_BATCH_SIZE = 4;
 const SUPPORTS_OFFSCREEN_CANVAS = typeof OffscreenCanvas !== "undefined";
+const GIF_DEFAULT_FRAME_DELAY = 100;
+const GIF_MIN_FRAME_DELAY = 20;
 const PRESET_STORAGE_KEY = "xuan-yuan-image-tool-user-presets-v1";
 const RESIZE_MODE_MANUAL = "manual";
 const RESIZE_MODE_TRIMMED_LONG_EDGE = "trimmed-long-edge";
@@ -1359,10 +1361,47 @@ function normalizePresetName(name) {
 }
 
 async function processSingleFile(fileRecord, settings) {
+  const originalMime = normalizeMimeType(fileRecord.type);
+  const outputMime = settings.output.enabled && settings.output.format !== "original"
+    ? normalizeMimeType(settings.output.format)
+    : normalizeMimeType(originalMime);
+
+  const hasOutputAction = settings.output.enabled && (
+    settings.output.format !== "original" ||
+    settings.output.quality < 1
+  );
+
+  let note = "";
+
+  if (shouldCompressAnimatedGif(fileRecord, settings, originalMime, outputMime, hasOutputAction)) {
+    try {
+      const gifResult = await exportAnimatedGif(fileRecord.file, settings.output.quality, settings.output.fillColor);
+      const outputUrl = URL.createObjectURL(gifResult.blob);
+      const outputName = buildOutputName(fileRecord.name, outputMime);
+      const outputExt = MIME_EXTENSION_MAP[outputMime] || "gif";
+
+      return {
+        id: fileRecord.id,
+        outputName,
+        outputExt,
+        outputType: outputMime,
+        outputSize: gifResult.blob.size,
+        originalSize: fileRecord.size,
+        outputUrl,
+        width: gifResult.width || fileRecord.width,
+        height: gifResult.height || fileRecord.height,
+        blob: gifResult.blob,
+        note: describeAnimatedGifCompression(gifResult),
+      };
+    } catch (error) {
+      console.warn("Animated GIF compression failed, falling back to static GIF export.", error);
+      note = "当前浏览器无法逐帧压缩 GIF，已导出静态 GIF。";
+    }
+  }
+
   const source = await decodeImageSource(fileRecord.file, fileRecord.sourceUrl);
   let canvas;
   let hasVisualChange = false;
-  let note = "";
 
   try {
     canvas = drawImageToCanvas(source);
@@ -1403,16 +1442,6 @@ async function processSingleFile(fileRecord, settings) {
       canvas = nextCanvas;
     }
   }
-
-  const originalMime = normalizeMimeType(fileRecord.type);
-  const outputMime = settings.output.enabled && settings.output.format !== "original"
-    ? normalizeMimeType(settings.output.format)
-    : normalizeMimeType(originalMime);
-
-  const hasOutputAction = settings.output.enabled && (
-    settings.output.format !== "original" ||
-    settings.output.quality < 1
-  );
 
   const shouldReuseOriginal = !hasVisualChange && !hasOutputAction;
   let blob;
@@ -2138,6 +2167,43 @@ function shouldPassQuality(mimeType) {
   return mimeType === "image/jpeg" || mimeType === "image/webp";
 }
 
+function shouldCompressAnimatedGif(fileRecord, settings, originalMime, outputMime, hasOutputAction) {
+  const isOriginalGif = originalMime === "image/gif" || /\.gif$/i.test(fileRecord.name || "");
+  return isOriginalGif &&
+    outputMime === "image/gif" &&
+    hasOutputAction &&
+    !settings.trim.enabled &&
+    !settings.resize.enabled &&
+    !settings.canvas.enabled;
+}
+
+function gifEncoderQuality(quality) {
+  return Math.max(1, Math.min(30, Math.round((1 - quality) * 29) + 1));
+}
+
+function gifFrameStep(quality) {
+  if (quality >= 0.85) {
+    return 1;
+  }
+  if (quality >= 0.65) {
+    return 2;
+  }
+  if (quality >= 0.45) {
+    return 3;
+  }
+  if (quality >= 0.25) {
+    return 4;
+  }
+  return 5;
+}
+
+function describeAnimatedGifCompression(result) {
+  if (result.frameStep > 1) {
+    return `GIF 已重编码并降低帧数：${result.outputFrames} / ${result.frameCount} 帧`;
+  }
+  return result.frameCount > 1 ? "GIF 已逐帧重编码压缩" : "GIF 已重编码压缩";
+}
+
 function surfaceToBlob(surface, mimeType, quality) {
   if (typeof surface.convertToBlob === "function") {
     const options = { type: mimeType };
@@ -2169,7 +2235,7 @@ async function exportGif(canvas, quality, fillColor) {
 
     const gif = new GIF({
       workers: 2,
-      quality: Math.max(1, Math.min(30, Math.round((1 - quality) * 29) + 1)),
+      quality: gifEncoderQuality(quality),
       width: canvas.width,
       height: canvas.height,
       workerScript: getGifWorkerScript(),
@@ -2177,6 +2243,418 @@ async function exportGif(canvas, quality, fillColor) {
     });
 
     gif.addFrame(canvas, { copy: true, delay: 200 });
+    gif.on("finished", (blob) => resolve(blob));
+    gif.on("abort", () => reject(new Error("GIF 导出中断。")));
+    gif.on("error", (error) => reject(error instanceof Error ? error : new Error(String(error))));
+    gif.render();
+  });
+}
+
+async function exportAnimatedGif(file, quality, fillColor) {
+  await ensureGifLibrary();
+  if (typeof GIF === "undefined") {
+    throw new Error("GIF 导出依赖未加载。");
+  }
+
+  const frameSet = decodeGifFramesFromBuffer(await file.arrayBuffer());
+  const { width, height, frames } = frameSet;
+  const gif = new GIF({
+    workers: 2,
+    quality: gifEncoderQuality(quality),
+    width,
+    height,
+    workerScript: getGifWorkerScript(),
+    background: fillColor,
+  });
+  const frameStep = gifFrameStep(quality);
+  const fillRgb = parseHexColor(fillColor);
+  let pendingDelay = 0;
+  let outputFrames = 0;
+
+  for (let index = 0; index < frames.length; index += 1) {
+    const frame = frames[index];
+    pendingDelay += frame.delay;
+
+    if (index % frameStep === 0 || index === frames.length - 1) {
+      gif.addFrame(createCompositedImageData(frame.data, width, height, fillRgb), {
+        delay: Math.max(GIF_MIN_FRAME_DELAY, Math.round(pendingDelay)),
+      });
+      pendingDelay = 0;
+      outputFrames += 1;
+    }
+
+    if (index % 8 === 0) {
+      await yieldToBrowser();
+    }
+  }
+
+  if (!outputFrames) {
+    throw new Error("GIF 没有可导出的帧。");
+  }
+
+  const blob = await renderGif(gif);
+  return {
+    blob,
+    width,
+    height,
+    frameCount: frames.length,
+    outputFrames,
+    frameStep,
+  };
+}
+
+function parseHexColor(color) {
+  const normalized = normalizeColorValue(color, "#ffffff");
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function createCompositedImageData(sourceData, width, height, fillRgb) {
+  const output = new Uint8ClampedArray(sourceData.length);
+
+  for (let offset = 0; offset < sourceData.length; offset += 4) {
+    const alpha = sourceData[offset + 3] / 255;
+    const inverseAlpha = 1 - alpha;
+    output[offset] = Math.round(sourceData[offset] * alpha + fillRgb.r * inverseAlpha);
+    output[offset + 1] = Math.round(sourceData[offset + 1] * alpha + fillRgb.g * inverseAlpha);
+    output[offset + 2] = Math.round(sourceData[offset + 2] * alpha + fillRgb.b * inverseAlpha);
+    output[offset + 3] = 255;
+  }
+
+  return new ImageData(output, width, height);
+}
+
+function decodeGifFramesFromBuffer(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let offset = 0;
+
+  const readByte = () => {
+    if (offset >= bytes.length) {
+      throw new Error("GIF 文件不完整。");
+    }
+    return bytes[offset++];
+  };
+
+  const readUint16 = () => readByte() | (readByte() << 8);
+
+  const readString = (length) => {
+    let value = "";
+    for (let index = 0; index < length; index += 1) {
+      value += String.fromCharCode(readByte());
+    }
+    return value;
+  };
+
+  const readColorTable = (length) => {
+    const table = [];
+    for (let index = 0; index < length; index += 1) {
+      table.push([readByte(), readByte(), readByte()]);
+    }
+    return table;
+  };
+
+  const readSubBlocks = () => {
+    const chunks = [];
+    let totalLength = 0;
+
+    for (;;) {
+      const size = readByte();
+      if (size === 0) {
+        break;
+      }
+      if (offset + size > bytes.length) {
+        throw new Error("GIF 数据块不完整。");
+      }
+      chunks.push(bytes.subarray(offset, offset + size));
+      offset += size;
+      totalLength += size;
+    }
+
+    const output = new Uint8Array(totalLength);
+    let writeOffset = 0;
+    for (const chunk of chunks) {
+      output.set(chunk, writeOffset);
+      writeOffset += chunk.length;
+    }
+    return output;
+  };
+
+  const skipSubBlocks = () => {
+    for (;;) {
+      const size = readByte();
+      if (size === 0) {
+        break;
+      }
+      if (offset + size > bytes.length) {
+        throw new Error("GIF 数据块不完整。");
+      }
+      offset += size;
+    }
+  };
+
+  const header = readString(6);
+  if (header !== "GIF87a" && header !== "GIF89a") {
+    throw new Error("不是有效的 GIF 文件。");
+  }
+
+  const width = readUint16();
+  const height = readUint16();
+  if (!width || !height) {
+    throw new Error("未能读取 GIF 尺寸。");
+  }
+
+  const packed = readByte();
+  const hasGlobalColorTable = (packed & 0x80) !== 0;
+  const globalColorTableSize = 1 << ((packed & 0x07) + 1);
+  readByte();
+  readByte();
+
+  const globalColorTable = hasGlobalColorTable ? readColorTable(globalColorTableSize) : null;
+  const frames = [];
+  let canvas = new Uint8ClampedArray(width * height * 4);
+  let graphicControl = createDefaultGifGraphicControl();
+
+  while (offset < bytes.length) {
+    const blockId = readByte();
+    if (blockId === 0x3B) {
+      break;
+    }
+
+    if (blockId === 0x21) {
+      const extensionLabel = readByte();
+      if (extensionLabel === 0xF9) {
+        const blockSize = readByte();
+        if (blockSize !== 4) {
+          offset += blockSize;
+          readByte();
+          continue;
+        }
+        const extensionPacked = readByte();
+        const delayCentiseconds = readUint16();
+        const transparentIndex = readByte();
+        readByte();
+        graphicControl = {
+          disposal: (extensionPacked >> 2) & 0x07,
+          delay: delayCentiseconds > 0 ? Math.max(GIF_MIN_FRAME_DELAY, delayCentiseconds * 10) : GIF_DEFAULT_FRAME_DELAY,
+          transparentIndex: (extensionPacked & 0x01) !== 0 ? transparentIndex : null,
+        };
+      } else {
+        skipSubBlocks();
+      }
+      continue;
+    }
+
+    if (blockId !== 0x2C) {
+      throw new Error("GIF 数据包含未知块。");
+    }
+
+    const left = readUint16();
+    const top = readUint16();
+    const frameWidth = readUint16();
+    const frameHeight = readUint16();
+    const imagePacked = readByte();
+    const hasLocalColorTable = (imagePacked & 0x80) !== 0;
+    const isInterlaced = (imagePacked & 0x40) !== 0;
+    const localColorTableSize = 1 << ((imagePacked & 0x07) + 1);
+    const colorTable = hasLocalColorTable ? readColorTable(localColorTableSize) : globalColorTable;
+    if (!colorTable) {
+      throw new Error("GIF 缺少颜色表。");
+    }
+
+    const lzwMinCodeSize = readByte();
+    const imageData = readSubBlocks();
+    const expectedPixels = frameWidth * frameHeight;
+    const decodedIndices = lzwDecodeGifData(lzwMinCodeSize, imageData, expectedPixels);
+    const frameIndices = isInterlaced
+      ? deinterlaceGifIndices(decodedIndices, frameWidth, frameHeight)
+      : decodedIndices;
+    const previousCanvas = graphicControl.disposal === 3 ? new Uint8ClampedArray(canvas) : null;
+
+    for (let y = 0; y < frameHeight; y += 1) {
+      const targetY = top + y;
+      if (targetY < 0 || targetY >= height) {
+        continue;
+      }
+
+      for (let x = 0; x < frameWidth; x += 1) {
+        const targetX = left + x;
+        if (targetX < 0 || targetX >= width) {
+          continue;
+        }
+
+        const colorIndex = frameIndices[y * frameWidth + x];
+        if (colorIndex === graphicControl.transparentIndex) {
+          continue;
+        }
+
+        const color = colorTable[colorIndex] || [0, 0, 0];
+        const targetOffset = (targetY * width + targetX) * 4;
+        canvas[targetOffset] = color[0];
+        canvas[targetOffset + 1] = color[1];
+        canvas[targetOffset + 2] = color[2];
+        canvas[targetOffset + 3] = 255;
+      }
+    }
+
+    frames.push({
+      delay: graphicControl.delay,
+      data: new Uint8ClampedArray(canvas),
+    });
+
+    if (graphicControl.disposal === 2) {
+      clearGifFrameRegion(canvas, width, height, left, top, frameWidth, frameHeight);
+    } else if (graphicControl.disposal === 3 && previousCanvas) {
+      canvas = previousCanvas;
+    }
+
+    graphicControl = createDefaultGifGraphicControl();
+  }
+
+  if (!frames.length) {
+    throw new Error("GIF 没有可导出的帧。");
+  }
+
+  return { width, height, frames };
+}
+
+function createDefaultGifGraphicControl() {
+  return {
+    disposal: 0,
+    delay: GIF_DEFAULT_FRAME_DELAY,
+    transparentIndex: null,
+  };
+}
+
+function clearGifFrameRegion(canvas, canvasWidth, canvasHeight, left, top, width, height) {
+  for (let y = 0; y < height; y += 1) {
+    const targetY = top + y;
+    if (targetY < 0 || targetY >= canvasHeight) {
+      continue;
+    }
+
+    for (let x = 0; x < width; x += 1) {
+      const targetX = left + x;
+      if (targetX < 0 || targetX >= canvasWidth) {
+        continue;
+      }
+
+      const targetOffset = (targetY * canvasWidth + targetX) * 4;
+      canvas[targetOffset] = 0;
+      canvas[targetOffset + 1] = 0;
+      canvas[targetOffset + 2] = 0;
+      canvas[targetOffset + 3] = 0;
+    }
+  }
+}
+
+function lzwDecodeGifData(minCodeSize, data, expectedLength) {
+  const clearCode = 1 << minCodeSize;
+  const endCode = clearCode + 1;
+  let codeSize = minCodeSize + 1;
+  let nextCode = endCode + 1;
+  let dictionary = [];
+  let bitOffset = 0;
+  const output = [];
+
+  const resetDictionary = () => {
+    dictionary = [];
+    for (let index = 0; index < clearCode; index += 1) {
+      dictionary[index] = [index];
+    }
+    dictionary[clearCode] = [];
+    dictionary[endCode] = null;
+    codeSize = minCodeSize + 1;
+    nextCode = endCode + 1;
+  };
+
+  const readCode = (size) => {
+    let code = 0;
+    for (let bit = 0; bit < size; bit += 1) {
+      if (bitOffset >= data.length * 8) {
+        return null;
+      }
+      if ((data[bitOffset >> 3] & (1 << (bitOffset & 7))) !== 0) {
+        code |= 1 << bit;
+      }
+      bitOffset += 1;
+    }
+    return code;
+  };
+
+  resetDictionary();
+  let previousEntry = null;
+
+  for (;;) {
+    const code = readCode(codeSize);
+    if (code === null || code === endCode) {
+      break;
+    }
+
+    if (code === clearCode) {
+      resetDictionary();
+      previousEntry = null;
+      continue;
+    }
+
+    let entry;
+    if (dictionary[code]) {
+      entry = dictionary[code].slice();
+    } else if (code === nextCode && previousEntry) {
+      entry = previousEntry.concat(previousEntry[0]);
+    } else {
+      break;
+    }
+
+    for (const value of entry) {
+      output.push(value);
+      if (output.length >= expectedLength) {
+        break;
+      }
+    }
+
+    if (previousEntry) {
+      dictionary[nextCode] = previousEntry.concat(entry[0]);
+      nextCode += 1;
+      if (nextCode === (1 << codeSize) && codeSize < 12) {
+        codeSize += 1;
+      }
+    }
+
+    previousEntry = entry;
+    if (output.length >= expectedLength) {
+      break;
+    }
+  }
+
+  return Uint8Array.from(output.slice(0, expectedLength));
+}
+
+function deinterlaceGifIndices(indices, width, height) {
+  const output = new Uint8Array(indices.length);
+  const passes = [
+    { start: 0, step: 8 },
+    { start: 4, step: 8 },
+    { start: 2, step: 4 },
+    { start: 1, step: 2 },
+  ];
+  let sourceOffset = 0;
+
+  for (const pass of passes) {
+    for (let y = pass.start; y < height; y += pass.step) {
+      const row = indices.subarray(sourceOffset, sourceOffset + width);
+      output.set(row, y * width);
+      sourceOffset += width;
+    }
+  }
+
+  return output;
+}
+
+function renderGif(gif) {
+  return new Promise((resolve, reject) => {
     gif.on("finished", (blob) => resolve(blob));
     gif.on("abort", () => reject(new Error("GIF 导出中断。")));
     gif.on("error", (error) => reject(error instanceof Error ? error : new Error(String(error))));
