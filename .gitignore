@@ -7,3 +7,5 @@ node_modules/
 dist/
 build/
 *.log
+deploy-package/
+*.baiduyun.uploading.cfg
