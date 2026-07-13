@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>裁切工具</title>
+    <link rel="stylesheet" href="/crop/styles.css?v=20260708-round-upload-icon" />
+  </head>
+  <body>
+    <main class="crop-shell">
+      <header class="app-hero">
+        <nav class="tool-tabs" aria-label="图片工具切换">
+          <a class="tool-tab" href="/batch/">批量处理</a>
+          <a class="tool-tab active" href="/crop/">裁切工具</a>
+          <a class="tool-tab" href="/layout/">简单排版</a>
+        </nav>
+        <div class="hero-main">
+          <h1>裁切工具</h1>
+        </div>
+      </header>
+
+      <section class="workspace-grid">
+        <section class="panel stage-panel" aria-label="图片画布">
+          <div class="section-title">
+            <h2 id="stageTitle">上传图片</h2>
+            <div class="stage-actions">
+              <span id="imageMeta">未选择图片</span>
+              <span id="sliceMeta">0 / 0 个切片</span>
+              <button class="ghost-button subtle-button" id="clearImageButton" type="button">清除图片</button>
+            </div>
+          </div>
+
+          <div class="canvas-wrap" id="dropZone">
+            <canvas id="stageCanvas" width="1200" height="820"></canvas>
+            <label class="drop-zone" id="emptyState">
+              <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+              <span class="upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 1024 1024">
+                  <path d="M576 282.496V704a64 64 0 0 1-128 0V282.496L301.248 429.248a64 64 0 0 1-90.496-90.496l256-256a64 64 0 0 1 90.496 0l256 256a64 64 0 1 1-90.496 90.496L576 282.496zM1024 704v256a64 64 0 0 1-64 64H64a64 64 0 0 1-64-64v-256a64 64 0 0 1 128 0v192h768v-192a64 64 0 0 1 128 0z" />
+                </svg>
+              </span>
+              <strong>拖入图片，或点击选择文件</strong>
+            </label>
+            <div class="magnifier" id="magnifier" aria-hidden="true">
+              <canvas id="magnifierCanvas" width="132" height="132"></canvas>
+              <span id="magnifierText">0, 0</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="controls-stack" aria-label="裁切控制">
+          <section class="panel tool-panel">
+            <div class="mode-tabs" role="tablist" aria-label="裁切方式">
+              <button class="mode-tab active" type="button" data-mode="crop">裁切区域</button>
+              <button class="mode-tab" type="button" data-mode="slice">参考线切片</button>
+            </div>
+
+            <div class="tool-pane active" id="cropPane" data-pane="crop">
+              <div class="crop-box">
+                <div class="section-title compact-title">
+                  <h2>裁切区域</h2>
+                  <button class="ghost-button" id="resetCropButton" type="button">重置</button>
+                </div>
+                <div class="number-grid">
+                  <label>
+                    <span>宽度</span>
+                    <input id="cropW" type="number" min="1" inputmode="numeric" />
+                  </label>
+                  <label>
+                    <span>高度</span>
+                    <input id="cropH" type="number" min="1" inputmode="numeric" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="export-box crop-export-box">
+                <div class="export-grid">
+                  <label>
+                    <span>格式</span>
+                    <select id="formatSelect">
+                      <option value="image/jpeg" selected>JPG</option>
+                      <option value="image/png">PNG</option>
+                      <option value="image/webp">WebP</option>
+                    </select>
+                  </label>
+                  <label class="range-field">
+                    <span>质量 <strong id="qualityValue">85%</strong></span>
+                    <input id="qualityRange" type="range" min="10" max="100" value="85" />
+                  </label>
+                </div>
+              </div>
+              <div class="button-row">
+                <button id="trimTransparentButton" type="button">裁切透明边缘</button>
+                <button id="downloadCropButton" type="button">导出裁切图</button>
+              </div>
+            </div>
+
+            <div class="tool-pane" id="slicePane" data-pane="slice">
+              <div class="guide-box">
+                <div class="guide-tool-grid" aria-label="参考线设置">
+                  <label class="guide-field">
+                    <span class="guide-icon" aria-hidden="true">
+                      <svg class="solid-icon" viewBox="0 0 437.7 439.97"><path d="M0,424a16,16,0,0,0,32,0V16A16,16,0,0,0,0,16Z" /><path d="M80.39,424a16,16,0,0,0,32,0V16a16,16,0,0,0-32,0Z" /><path d="M421,203.51H207.72L296,115.22a16.68,16.68,0,0,0-23.17-24l-.41.41L155.66,208.4a16.69,16.69,0,0,0,0,23.59L272.43,348.75A16.68,16.68,0,0,0,296,325.16l-88.29-88.29H421a16.68,16.68,0,1,0,0-33.36Z" /></svg>
+                    </span>
+                    <input id="verticalGuides" type="text" inputmode="numeric" placeholder="边距" />
+                  </label>
+                  <label class="guide-field">
+                    <span class="guide-icon" aria-hidden="true">
+                      <svg class="solid-icon" viewBox="0 0 437.7 439.97"><path d="M437.7,16a16,16,0,0,0-32,0V424a16,16,0,0,0,32,0Z" /><path d="M357.31,16a16,16,0,0,0-32,0V424a16,16,0,0,0,32,0Z" /><path d="M16.68,236.46H230l-88.29,88.29a16.68,16.68,0,0,0,23.17,24l.41-.41L282,231.58A16.69,16.69,0,0,0,282,208L165.27,91.22a16.68,16.68,0,0,0-23.58,23.59L230,203.1H16.68a16.68,16.68,0,0,0,0,33.36Z" /></svg>
+                    </span>
+                    <input id="verticalGuideAdd" type="number" min="1" inputmode="numeric" placeholder="边距" />
+                  </label>
+                  <label class="guide-field">
+                    <span class="guide-icon" aria-hidden="true">
+                      <svg class="solid-icon" viewBox="0 0 439.97 437.7"><path d="M16,0a16,16,0,0,0,0,32H424a16,16,0,0,0,0-32Z" /><path d="M16,80.39a16,16,0,0,0,0,32H424a16,16,0,0,0,0-32Z" /><path d="M236.46,421V207.72L324.75,296a16.68,16.68,0,0,0,24-23.17c-.13-.14-.27-.28-.41-.41L231.58,155.66a16.69,16.69,0,0,0-23.59,0L91.22,272.43A16.68,16.68,0,0,0,114.81,296l88.29-88.29V421a16.68,16.68,0,0,0,33.36,0Z" /></svg>
+                    </span>
+                    <input id="horizontalGuides" type="text" inputmode="numeric" placeholder="边距" />
+                  </label>
+                  <label class="guide-field">
+                    <span class="guide-icon" aria-hidden="true">
+                      <svg class="solid-icon" viewBox="0 0 439.97 437.7"><path d="M424,437.7a16,16,0,0,0,0-32H16a16,16,0,0,0,0,32Z" /><path d="M424,357.31a16,16,0,0,0,0-32H16a16,16,0,0,0,0,32Z" /><path d="M203.51,16.68V230l-88.29-88.29a16.68,16.68,0,0,0-24,23.17l.41.41L208.4,282A16.69,16.69,0,0,0,232,282L348.75,165.27a16.68,16.68,0,0,0-23.59-23.58L236.87,230V16.68a16.68,16.68,0,0,0-33.36,0Z" /></svg>
+                    </span>
+                    <input id="horizontalGuideAdd" type="number" min="1" inputmode="numeric" placeholder="边距" />
+                  </label>
+                  <label class="guide-field">
+                    <span class="guide-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M4 5h16" /><path d="M4 12h16" /><path d="M4 19h16" /></svg>
+                    </span>
+                    <input id="splitCols" type="number" min="1" max="20" inputmode="numeric" placeholder="列数" />
+                  </label>
+                  <label class="guide-field">
+                    <span class="guide-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M5 4v16" /><path d="M12 4v16" /><path d="M19 4v16" /></svg>
+                    </span>
+                    <input id="splitRows" type="number" min="1" max="20" inputmode="numeric" placeholder="行数" />
+                  </label>
+                </div>
+
+                <div class="button-row guide-actions">
+                  <button id="applySplitButton" type="button">生成切片</button>
+                  <button id="addGuideButton" type="button">移除切片</button>
+                </div>
+              </div>
+
+              <div class="slice-box">
+                <div class="slice-list" id="sliceList"></div>
+                <div class="button-row compact slice-actions">
+                  <button id="selectAllSlicesButton" type="button">全选</button>
+                  <button id="invertSlicesButton" type="button">反选</button>
+                  <button id="clearSlicesButton" type="button">全不选</button>
+                </div>
+              </div>
+
+              <div class="export-box slice-export-box">
+                <div class="export-grid">
+                  <label>
+                    <span>格式</span>
+                    <select id="sliceFormatSelect">
+                      <option value="image/jpeg" selected>JPG</option>
+                      <option value="image/png">PNG</option>
+                      <option value="image/webp">WebP</option>
+                    </select>
+                  </label>
+                  <label class="range-field">
+                    <span>质量 <strong id="sliceQualityValue">85%</strong></span>
+                    <input id="sliceQualityMirror" type="range" min="10" max="100" value="85" />
+                  </label>
+                </div>
+              </div>
+              <button id="downloadZipButton" type="button">导出选中切片 ZIP</button>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/crop/app.js?v=20260708-magnifier-performance"></script>
+  </body>
+</html>

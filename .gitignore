@@ -9,3 +9,4 @@ build/
 *.log
 deploy-package/
 *.baiduyun.uploading.cfg
+output/

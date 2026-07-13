@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>简单排版工具</title>
+    <link rel="stylesheet" href="/layout/styles.css?v=20260710-layout-performance-stability" />
+    <script defer src="/layout/app.js?v=20260710-layout-performance-stability"></script>
+  </head>
+  <body>
+    <main class="layout-shell">
+      <header class="app-hero">
+        <nav class="tool-tabs" aria-label="图片工具切换">
+          <a class="tool-tab" href="/batch/">批量处理</a>
+          <a class="tool-tab" href="/crop/">裁切工具</a>
+          <a class="tool-tab active" href="/layout/">简单排版</a>
+        </nav>
+        <div class="hero-main">
+          <h1>简单排版工具</h1>
+        </div>
+      </header>
+
+      <section class="workspace-grid">
+        <section class="panel stage-panel" aria-label="排版画布">
+          <div class="section-title">
+            <h2 id="stageTitle">排版画布</h2>
+            <div class="stage-actions">
+              <span id="canvasMeta">1080 × 1080</span>
+            </div>
+          </div>
+
+          <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="layoutCanvas" width="1200" height="820"></canvas>
+            <div class="text-layer" id="textLayer" aria-label="文本编辑层"></div>
+            <div class="snap-layer" id="snapLayer" aria-hidden="true"></div>
+            <div class="canvas-tool-dock" id="canvasToolDock" aria-label="画布工具">
+              <button class="canvas-tool-button" id="canvasTextToolButton" type="button" aria-label="文本工具" title="文本工具">
+                <svg viewBox="0 0 327 363.33" aria-hidden="true">
+                  <path d="M308.83,0H18.17A18.19,18.19,0,0,0,0,18.17V54.5a18.17,18.17,0,1,0,36.33,0V36.33h109V327H99a18.17,18.17,0,0,0,0,36.33H228A18.17,18.17,0,0,0,228,327H181.67V36.33h109V54.5a18.17,18.17,0,1,0,36.33,0V18.17A18.19,18.19,0,0,0,308.83,0Z" />
+                </svg>
+              </button>
+              <button class="canvas-tool-button" id="canvasClearElementsButton" type="button" aria-label="清空画布元素" title="清空画布元素">
+                <svg viewBox="0 0 309.5 384" aria-hidden="true">
+                  <path d="M277.26,106.39a16.12,16.12,0,0,0-16.12,16.12V322.58a31,31,0,0,1-32.41,29.16h-148a30.94,30.94,0,0,1-32.4-29.16V122.51a16.12,16.12,0,1,0-32.24,0V322.58A63.16,63.16,0,0,0,80.76,384h148a63.16,63.16,0,0,0,64.65-61.4V122.51A16.12,16.12,0,0,0,277.26,106.39Z" />
+                  <path d="M293.38,48.36H228.9V16.12A16.12,16.12,0,0,0,212.78,0H96.72A16.12,16.12,0,0,0,80.6,16.12V48.36H16.12a16.12,16.12,0,0,0,0,32.24H293.38a16.12,16.12,0,1,0,0-32.24Zm-180.54,0V32.24h83.82V48.36Z" />
+                  <path d="M129,291.27V158.75a16.12,16.12,0,0,0-32.24,0V291.27a16.12,16.12,0,0,0,32.24,0Z" />
+                  <path d="M212.78,291.27V158.75a16.12,16.12,0,0,0-32.24,0V291.27a16.12,16.12,0,0,0,32.24,0Z" />
+                </svg>
+              </button>
+            </div>
+            <div class="floating-text-toolbar hidden" id="floatingToolbar" aria-label="文本悬浮工具栏">
+              <input class="float-color" id="floatingColorInput" type="color" aria-label="文字颜色" title="文字颜色" value="#0f172a" />
+              <input class="float-size" id="floatingFontSizeInput" type="number" min="8" max="400" value="48" inputmode="numeric" aria-label="字号" title="字号" />
+              <input class="float-size float-spacing" id="floatingLetterSpacingInput" type="number" min="-100" max="500" step="1" value="0" inputmode="decimal" aria-label="字距" title="字距" />
+              <input class="float-size float-line-height" id="floatingLineHeightInput" type="number" min="0.8" max="3" step="0.05" value="1.25" inputmode="decimal" aria-label="行距" title="行距" />
+              <button class="float-tool" id="floatingBoldButton" type="button" aria-label="加粗" title="加粗">B</button>
+              <button class="float-tool italic" id="floatingItalicButton" type="button" aria-label="斜体" title="斜体">I</button>
+              <span class="float-separator" aria-hidden="true"></span>
+              <button class="float-tool align-float-button" type="button" data-align="left" aria-label="左对齐" title="左对齐">
+                <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                  <path d="M21.33,42.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M21.33,170.67h256a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M21.33,298.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M21.33,426.67h256a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                </svg>
+              </button>
+              <button class="float-tool align-float-button" type="button" data-align="center" aria-label="居中对齐" title="居中对齐">
+                <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                  <path d="M405.33,0h-384a21.34,21.34,0,0,0,0,42.67h384a21.34,21.34,0,1,0,0-42.67Z" />
+                  <path d="M320,170.67A21.34,21.34,0,0,0,320,128H106.67a21.34,21.34,0,1,0,0,42.67Z" />
+                  <path d="M405.33,256h-384a21.34,21.34,0,0,0,0,42.67h384a21.34,21.34,0,1,0,0-42.67Z" />
+                  <path d="M320,426.67A21.34,21.34,0,0,0,320,384H106.67a21.34,21.34,0,1,0,0,42.67Z" />
+                </svg>
+              </button>
+              <button class="float-tool align-float-button" type="button" data-align="right" aria-label="右对齐" title="右对齐">
+                <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                  <path d="M405.33,0h-384a21.34,21.34,0,0,0,0,42.67h384a21.34,21.34,0,1,0,0-42.67Z" />
+                  <path d="M405.33,170.67a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M0,277.33a21.33,21.33,0,0,0,21.33,21.34h384a21.34,21.34,0,1,0,0-42.67h-384A21.33,21.33,0,0,0,0,277.33Z" />
+                  <path d="M426.67,405.33A21.33,21.33,0,0,0,405.33,384h-256a21.34,21.34,0,0,0,0,42.67h256A21.33,21.33,0,0,0,426.67,405.33Z" />
+                </svg>
+              </button>
+              <button class="float-tool align-float-button" type="button" data-align="justify" aria-label="两端对齐，末行左对齐" title="两端对齐，末行左对齐">
+                <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                  <path d="M21.33,42.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M21.33,170.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M21.33,298.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                  <path d="M21.33,426.67h256a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                </svg>
+              </button>
+              <button class="float-tool" id="floatingCenterButton" type="button" aria-label="水平居中到画布" title="水平居中到画布">
+                <svg viewBox="0 0 314.67 386.14" aria-hidden="true">
+                  <path d="M233.4,177.86A45.64,45.64,0,0,0,279,132.22V86.58A45.64,45.64,0,0,0,233.4,40.94H172.55V15.21a15.22,15.22,0,0,0-30.43,0V40.94H81.27A45.64,45.64,0,0,0,35.63,86.58v45.64a45.65,45.65,0,0,0,45.64,45.64h60.85v30.42H45.64A45.64,45.64,0,0,0,0,253.92v45.64A45.64,45.64,0,0,0,45.64,345.2h96.48v25.73a15.22,15.22,0,0,0,30.43,0V345.2H269a45.64,45.64,0,0,0,45.64-45.64V253.92A45.64,45.64,0,0,0,269,208.28H172.55V177.86Zm50.85,76.06v45.64A15.22,15.22,0,0,1,269,314.77H45.64a15.21,15.21,0,0,1-15.21-15.21V253.92a15.21,15.21,0,0,1,15.21-15.21H269A15.22,15.22,0,0,1,284.25,253.92ZM66.06,132.22V86.58A15.21,15.21,0,0,1,81.27,71.37H233.4a15.21,15.21,0,0,1,15.21,15.21v45.64a15.21,15.21,0,0,1-15.21,15.21H81.27A15.21,15.21,0,0,1,66.06,132.22Z" />
+                </svg>
+              </button>
+              <button class="float-tool" id="floatingDeleteButton" type="button" aria-label="删除文本" title="删除文本">
+                <svg viewBox="0 0 309.5 384" aria-hidden="true">
+                  <path d="M277.26,106.39a16.12,16.12,0,0,0-16.12,16.12V322.58a31,31,0,0,1-32.41,29.16h-148a30.94,30.94,0,0,1-32.4-29.16V122.51a16.12,16.12,0,1,0-32.24,0V322.58A63.16,63.16,0,0,0,80.76,384h148a63.16,63.16,0,0,0,64.65-61.4V122.51A16.12,16.12,0,0,0,277.26,106.39Z" />
+                  <path d="M293.38,48.36H228.9V16.12A16.12,16.12,0,0,0,212.78,0H96.72A16.12,16.12,0,0,0,80.6,16.12V48.36H16.12a16.12,16.12,0,0,0,0,32.24H293.38a16.12,16.12,0,1,0,0-32.24Zm-180.54,0V32.24h83.82V48.36Z" />
+                  <path d="M129,291.27V158.75a16.12,16.12,0,0,0-32.24,0V291.27a16.12,16.12,0,0,0,32.24,0Z" />
+                  <path d="M212.78,291.27V158.75a16.12,16.12,0,0,0-32.24,0V291.27a16.12,16.12,0,0,0,32.24,0Z" />
+                </svg>
+              </button>
+            </div>
+            <label class="drop-zone" id="emptyState">
+              <input id="stageFileInput" type="file" accept="image/png,image/jpeg,image/webp" />
+              <span class="upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 1024 1024">
+                  <path d="M576 282.496V704a64 64 0 0 1-128 0V282.496L301.248 429.248a64 64 0 0 1-90.496-90.496l256-256a64 64 0 0 1 90.496 0l256 256a64 64 0 1 1-90.496 90.496L576 282.496zM1024 704v256a64 64 0 0 1-64 64H64a64 64 0 0 1-64-64v-256a64 64 0 0 1 128 0v192h768v-192a64 64 0 0 1 128 0z" />
+                </svg>
+              </span>
+              <strong>拖入背景图，或点击选择文件</strong>
+              <small>也可以直接使用右侧背景色开始排版</small>
+            </label>
+          </div>
+        </section>
+
+        <aside class="controls-stack" aria-label="排版属性">
+          <section class="panel tool-panel">
+            <div class="property-card background-card">
+              <div class="background-action-row">
+                <button class="ghost-button upload-background-button" id="backgroundActionButton" type="button">
+                  <span class="button-upload-icon" aria-hidden="true">
+                    <svg viewBox="0 0 1024 1024">
+                      <path d="M576 282.496V704a64 64 0 0 1-128 0V282.496L301.248 429.248a64 64 0 0 1-90.496-90.496l256-256a64 64 0 0 1 90.496 0l256 256a64 64 0 1 1-90.496 90.496L576 282.496zM1024 704v256a64 64 0 0 1-64 64H64a64 64 0 0 1-64-64v-256a64 64 0 0 1 128 0v192h768v-192a64 64 0 0 1 128 0z" />
+                    </svg>
+                  </span>
+                  <span id="backgroundActionText">上传背景图</span>
+                </button>
+                <button class="ghost-button clear-background-inline" id="clearBackgroundButton" type="button">
+                  <span class="button-trash-icon" aria-hidden="true">
+                    <svg viewBox="0 0 309.5 384">
+                      <path d="M277.26,106.39a16.12,16.12,0,0,0-16.12,16.12V322.58a31,31,0,0,1-32.41,29.16h-148a30.94,30.94,0,0,1-32.4-29.16V122.51a16.12,16.12,0,1,0-32.24,0V322.58A63.16,63.16,0,0,0,80.76,384h148a63.16,63.16,0,0,0,64.65-61.4V122.51A16.12,16.12,0,0,0,277.26,106.39Z" />
+                      <path d="M293.38,48.36H228.9V16.12A16.12,16.12,0,0,0,212.78,0H96.72A16.12,16.12,0,0,0,80.6,16.12V48.36H16.12a16.12,16.12,0,0,0,0,32.24H293.38a16.12,16.12,0,1,0,0-32.24Zm-180.54,0V32.24h83.82V48.36Z" />
+                      <path d="M129,291.27V158.75a16.12,16.12,0,0,0-32.24,0V291.27a16.12,16.12,0,0,0,32.24,0Z" />
+                      <path d="M212.78,291.27V158.75a16.12,16.12,0,0,0-32.24,0V291.27a16.12,16.12,0,0,0,32.24,0Z" />
+                    </svg>
+                  </span>
+                  <span>清除背景</span>
+                </button>
+              </div>
+              <label class="range-field background-opacity-field">
+                <span>背景图片透明度 <strong id="backgroundOpacityValue">100%</strong></span>
+                <input id="backgroundOpacityRange" type="range" min="0" max="100" value="100" />
+              </label>
+              <div class="number-grid">
+                <label>
+                  <span>画布宽度</span>
+                  <input id="canvasWidthInput" type="number" min="64" max="12000" value="1080" inputmode="numeric" />
+                </label>
+                <label>
+                  <span>画布高度</span>
+                  <input id="canvasHeightInput" type="number" min="64" max="12000" value="1080" inputmode="numeric" />
+                </label>
+              </div>
+              <div class="field-grid">
+                <label>
+                  <span>背景色</span>
+                  <input id="backgroundColorInput" class="color-input" type="color" value="#ffffff" />
+                </label>
+                <label>
+                  <span>图片适配</span>
+                  <select id="backgroundFitSelect">
+                    <option value="cover">铺满裁剪</option>
+                    <option value="contain">适应画布</option>
+                    <option value="stretch">拉伸填充</option>
+                  </select>
+                </label>
+              </div>
+              <input id="backgroundFileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            </div>
+
+            <div class="property-card text-property-card hidden" id="textPropertyCard">
+              <label class="wide-field text-content-field">
+                <span>文字内容</span>
+                <textarea id="textContentInput" rows="4" placeholder="选中文本框后编辑内容"></textarea>
+              </label>
+              <div class="text-metric-grid">
+                <label>
+                  <span>字号</span>
+                  <input id="fontSizeInput" type="number" min="8" max="400" value="48" inputmode="numeric" />
+                </label>
+                <label>
+                  <span>字距</span>
+                  <input id="letterSpacingInput" type="number" min="-100" max="500" step="1" value="0" inputmode="decimal" />
+                </label>
+                <label>
+                  <span>行距</span>
+                  <input id="lineHeightInput" type="number" min="0.8" max="3" step="0.05" value="1.25" inputmode="decimal" />
+                </label>
+              </div>
+              <div class="field-grid">
+                <label>
+                  <span>字体</span>
+                  <select id="fontFamilySelect">
+                    <option value="Source Han Sans SC">思源黑体</option>
+                    <option value="Source Han Serif SC">思源宋体</option>
+                  </select>
+                </label>
+                <label>
+                  <span>文字颜色</span>
+                  <input id="textColorInput" class="color-input" type="color" value="#0f172a" />
+                </label>
+              </div>
+              <div class="text-toolbar" aria-label="文本样式">
+                <button class="icon-button" id="boldButton" type="button" aria-label="加粗">B</button>
+                <button class="icon-button italic" id="italicButton" type="button" aria-label="斜体">I</button>
+                <button class="icon-button align-button active" type="button" data-align="left" aria-label="左对齐">
+                  <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                    <path d="M21.33,42.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M21.33,170.67h256a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M21.33,298.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M21.33,426.67h256a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                  </svg>
+                </button>
+                <button class="icon-button align-button" type="button" data-align="center" aria-label="居中对齐">
+                  <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                    <path d="M405.33,0h-384a21.34,21.34,0,0,0,0,42.67h384a21.34,21.34,0,1,0,0-42.67Z" />
+                    <path d="M320,170.67A21.34,21.34,0,0,0,320,128H106.67a21.34,21.34,0,1,0,0,42.67Z" />
+                    <path d="M405.33,256h-384a21.34,21.34,0,0,0,0,42.67h384a21.34,21.34,0,1,0,0-42.67Z" />
+                    <path d="M320,426.67A21.34,21.34,0,0,0,320,384H106.67a21.34,21.34,0,1,0,0,42.67Z" />
+                  </svg>
+                </button>
+                <button class="icon-button align-button" type="button" data-align="right" aria-label="右对齐">
+                  <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                    <path d="M405.33,0h-384a21.34,21.34,0,0,0,0,42.67h384a21.34,21.34,0,1,0,0-42.67Z" />
+                    <path d="M405.33,170.67a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M0,277.33a21.33,21.33,0,0,0,21.33,21.34h384a21.34,21.34,0,1,0,0-42.67h-384A21.33,21.33,0,0,0,0,277.33Z" />
+                    <path d="M426.67,405.33A21.33,21.33,0,0,0,405.33,384h-256a21.34,21.34,0,0,0,0,42.67h256A21.33,21.33,0,0,0,426.67,405.33Z" />
+                  </svg>
+                </button>
+                <button class="icon-button align-button" type="button" data-align="justify" aria-label="两端对齐，末行左对齐" title="两端对齐，末行左对齐">
+                  <svg viewBox="0 0 426.67 426.67" aria-hidden="true">
+                    <path d="M21.33,42.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M21.33,170.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M21.33,298.67h384a21.34,21.34,0,1,0,0-42.67h-384a21.34,21.34,0,0,0,0,42.67Z" />
+                    <path d="M21.33,426.67h256a21.34,21.34,0,1,0,0-42.67h-256a21.34,21.34,0,0,0,0,42.67Z" />
+                  </svg>
+                </button>
+                <button class="icon-button" id="textCenterButton" type="button" aria-label="水平居中到画布" title="水平居中到画布">
+                  <svg viewBox="0 0 314.67 386.14" aria-hidden="true">
+                    <path d="M233.4,177.86A45.64,45.64,0,0,0,279,132.22V86.58A45.64,45.64,0,0,0,233.4,40.94H172.55V15.21a15.22,15.22,0,0,0-30.43,0V40.94H81.27A45.64,45.64,0,0,0,35.63,86.58v45.64a45.65,45.65,0,0,0,45.64,45.64h60.85v30.42H45.64A45.64,45.64,0,0,0,0,253.92v45.64A45.64,45.64,0,0,0,45.64,345.2h96.48v25.73a15.22,15.22,0,0,0,30.43,0V345.2H269a45.64,45.64,0,0,0,45.64-45.64V253.92A45.64,45.64,0,0,0,269,208.28H172.55V177.86Zm50.85,76.06v45.64A15.22,15.22,0,0,1,269,314.77H45.64a15.21,15.21,0,0,1-15.21-15.21V253.92a15.21,15.21,0,0,1,15.21-15.21H269A15.22,15.22,0,0,1,284.25,253.92ZM66.06,132.22V86.58A15.21,15.21,0,0,1,81.27,71.37H233.4a15.21,15.21,0,0,1,15.21,15.21v45.64a15.21,15.21,0,0,1-15.21,15.21H81.27A15.21,15.21,0,0,1,66.06,132.22Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="property-card export-card">
+              <div class="export-grid">
+                <label>
+                  <span>格式</span>
+                  <select id="exportFormatSelect">
+                    <option value="image/jpeg">JPG</option>
+                    <option value="image/png">PNG</option>
+                    <option value="image/webp">WebP</option>
+                  </select>
+                </label>
+                <label class="range-field">
+                  <span>质量 <strong id="qualityValue">90%</strong></span>
+                  <input id="qualityRange" type="range" min="10" max="100" value="90" />
+                </label>
+              </div>
+            </div>
+
+            <button class="primary-button" id="exportButton" type="button">导出图片</button>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

@@ -342,7 +342,37 @@ function cacheElements() {
   elements.resultList = document.getElementById("resultList");
 }
 
+function spinNumberInput(input, direction) {
+  const step = Number(input.step) || 1;
+  const min = input.min === "" ? -Infinity : Number(input.min);
+  const max = input.max === "" ? Infinity : Number(input.max);
+  const current = Number(input.value || input.placeholder || 0);
+  const decimals = String(input.step || "").includes(".") ? String(input.step).split(".")[1].length : 0;
+  const rawNext = (Number.isFinite(current) ? current : 0) + direction * step;
+  const next = Math.min(max, Math.max(min, rawNext));
+  input.value = decimals ? next.toFixed(decimals).replace(/0+$/, "").replace(/\.$/, "") : String(Math.round(next));
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function bindNumberWheelControls() {
+  document.querySelectorAll('input[type="number"]').forEach((input) => {
+    input.addEventListener(
+      "wheel",
+      (event) => {
+        if (input.disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        spinNumberInput(input, event.deltaY < 0 ? 1 : -1);
+      },
+      { passive: false },
+    );
+  });
+}
+
 function bindEvents() {
+  bindNumberWheelControls();
+
   elements.fileInput.addEventListener("change", (event) => {
     const files = Array.from(event.target.files || []);
     void handleSelectedFiles(files);
