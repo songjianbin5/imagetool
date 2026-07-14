@@ -176,27 +176,3 @@ svg {
     border-radius: 20px;
   }
 }
-
-/* Pencil design specification: suite entry page. */
-:root {
-  --bg: #f5f7fa;
-  --panel: #ffffff;
-  --ink: #101828;
-  --muted: #667085;
-  --line: #d7dee8;
-  --blue: #1769ff;
-  --shadow: 0 10px 28px rgba(16, 24, 40, 0.06);
-}
-
-body { background: var(--bg); }
-.home-shell { width: min(900px, 100%); gap: 20px; padding: 40px 24px; }
-.home-header h1 { font-size: 28px; font-weight: 700; }
-.entry-panel { gap: 12px; padding: 20px; border-color: var(--line); border-radius: 12px; background: #fff; box-shadow: var(--shadow); backdrop-filter: none; }
-.entry-card { min-height: 108px; padding: 20px; border-color: var(--line); border-radius: 8px; background: #fff; box-shadow: none; }
-.entry-card:hover, .entry-card:focus, .entry-card:focus-visible, .entry-card:active { border-color: var(--blue); background: #f8fbff; color: var(--ink); box-shadow: inset 3px 0 var(--blue); transform: none; }
-.entry-icon { width: 44px; height: 44px; border-radius: 8px; background: #e7f0ff; color: var(--blue); }
-.entry-card:hover .entry-icon, .entry-card:focus .entry-icon, .entry-card:focus-visible .entry-icon, .entry-card:active .entry-icon { background: #e7f0ff; color: var(--blue); }
-.entry-copy { gap: 4px; }
-.entry-copy strong { color: var(--ink); font-size: 20px; }
-.entry-copy small, .entry-card:hover .entry-copy small, .entry-card:focus .entry-copy small, .entry-card:focus-visible .entry-copy small, .entry-card:active .entry-copy small { color: var(--muted); font-size: 14px; }
-.entry-card:hover .entry-copy strong, .entry-card:focus .entry-copy strong, .entry-card:focus-visible .entry-copy strong, .entry-card:active .entry-copy strong { color: var(--ink); }
