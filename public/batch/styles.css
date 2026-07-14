@@ -1540,3 +1540,54 @@ img {
     flex-direction: column;
   }
 }
+
+/* Pencil design specification: shared image-tool workspace. */
+:root {
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --panel-strong: #ffffff;
+  --surface: #eef3f8;
+  --surface-strong: #ffffff;
+  --text: #101828;
+  --muted: #667085;
+  --line: #d7dee8;
+  --line-strong: #d7dee8;
+  --accent: #1769ff;
+  --blue: #1769ff;
+  --blue-dark: #0e4fc7;
+  --radius-xl: 12px;
+  --radius-lg: 8px;
+  --radius-md: 8px;
+  --radius-sm: 6px;
+  --shadow: 0 10px 28px rgba(16, 24, 40, 0.06);
+  --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.05);
+}
+
+body { background: var(--bg); }
+.app-shell { width: min(1280px, 100%); padding: 32px 24px 40px; }
+.hero-panel { margin-bottom: 22px; }
+.tool-tabs { gap: 4px; padding: 6px; border-color: var(--line); border-radius: 8px; background: var(--surface); box-shadow: none; }
+.tool-tab { min-height: 36px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.tool-tab.active { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); }
+.hero-copy h1 { color: var(--text); font-size: 30px; font-weight: 700; }
+.panel { border-color: var(--line); border-radius: 12px; background: var(--panel); box-shadow: var(--shadow); backdrop-filter: none; }
+.upload-panel, .controls-panel, .preview-panel, .results-panel { padding: 20px; }
+.section-head { margin-bottom: 16px; padding-bottom: 14px; border-bottom-color: var(--line); }
+.section-head h2 { color: var(--text); font-size: 18px; }
+.count-pill { min-height: 30px; border-color: var(--line); border-radius: 999px; background: #fff; color: var(--muted); font-size: 12px; font-weight: 600; }
+.dropzone { min-height: 132px; border-color: #9dc4ff; border-radius: 8px; background: #f8fbff; box-shadow: none; }
+.dropzone:hover, .dropzone.is-dragover { background: #f2f7ff; border-color: var(--blue); box-shadow: none; transform: none; }
+.dropzone-icon { width: 40px; height: 40px; border-radius: 8px; background: #e7f0ff; color: var(--blue); }
+.tool-card, .file-item, .result-item, .preview-frame, .summary-strip, .status-panel, .empty-state { border-color: var(--line); border-radius: 8px; }
+.tool-card { padding: 14px; background: #fff; box-shadow: none; }
+.tool-card.is-active { border-color: var(--blue); background: #f8fbff; box-shadow: inset 3px 0 var(--blue); }
+.field span { color: var(--muted); font-size: 12px; font-weight: 600; }
+.field input, .field select, .directory-chip { height: 42px; min-height: 42px; border-color: var(--line); border-radius: 8px; background: #fff; color: var(--text); font-size: 14px; }
+.field input:focus, .field select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(23, 105, 255, 0.12); }
+.primary-button, .ghost-button, .download-button { min-height: 40px; border-radius: 8px; font-size: 14px; }
+.primary-button { background: var(--blue); box-shadow: none; }
+.primary-button:hover { background: var(--blue-dark); }
+.ghost-button { border-color: var(--line); background: #fff; color: var(--text); }
+.preview-frame { border-color: var(--line); }
+.summary-strip { background: var(--surface); }
+@media (max-width: 720px) { .app-shell { padding: 20px 12px 28px; } .panel { border-radius: 10px; } .upload-panel, .controls-panel, .preview-panel, .results-panel { padding: 16px; } }
