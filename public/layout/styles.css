@@ -1,3 +1,35 @@
+@font-face {
+  font-family: "Source Han Sans SC";
+  src: url("/layout/fonts/SourceHanSansSC-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Han Sans SC";
+  src: url("/layout/fonts/SourceHanSansSC-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Han Serif SC";
+  src: url("/layout/fonts/SourceHanSerifSC-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Han Serif SC";
+  src: url("/layout/fonts/SourceHanSerifSC-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
   --bg: #edf2f6;
@@ -16,7 +48,7 @@
   --radius-md: 18px;
   --radius-sm: 14px;
   --shadow: 0 28px 70px rgba(15, 23, 42, 0.08);
-  --font-sans: Inter, "Segoe UI", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif;
+  --font-sans: "Source Han Sans SC", sans-serif;
   font-family: var(--font-sans);
 }
 

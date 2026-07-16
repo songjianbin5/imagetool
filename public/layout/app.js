@@ -5,9 +5,10 @@
   const SNAP_THRESHOLD = 8;
   const TEXT_TOP_INSET_RATIO = 0.32;
   const HISTORY_DEBOUNCE_MS = 450;
+  const FONT_LOAD_SAMPLE = "思源字体测试 Aa 0123";
   const FONT_STACKS = {
-    "Source Han Sans SC": '"Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif',
-    "Source Han Serif SC": '"Source Han Serif SC", "Noto Serif CJK SC", "SimSun", serif',
+    "Source Han Sans SC": '"Source Han Sans SC", sans-serif',
+    "Source Han Serif SC": '"Source Han Serif SC", serif',
   };
 
   const els = {
@@ -56,6 +57,7 @@
   };
 
   const textWrapCache = new WeakMap();
+  const fontLoadCache = new Map();
   let historyTimer = 0;
   let toolbarStateRaf = 0;
 
@@ -219,6 +221,39 @@
 
   function fontStack(fontFamily) {
     return FONT_STACKS[fontFamily] || FONT_STACKS["Source Han Sans SC"];
+  }
+
+  function loadFontFace(fontFamily, weight = 400) {
+    const family = FONT_STACKS[fontFamily] ? fontFamily : "Source Han Sans SC";
+    const normalizedWeight = Number(weight) >= 600 ? 700 : 400;
+    const key = `${family}:${normalizedWeight}`;
+    if (!fontLoadCache.has(key)) {
+      const descriptor = `${normalizedWeight} 16px "${family}"`;
+      const promise = document.fonts.load(descriptor, FONT_LOAD_SAMPLE).then((faces) => {
+        if (!faces.length || !document.fonts.check(descriptor, FONT_LOAD_SAMPLE)) {
+          throw new Error(`字体加载失败：${family} ${normalizedWeight}`);
+        }
+        return faces;
+      });
+      fontLoadCache.set(key, promise);
+    }
+    return fontLoadCache.get(key);
+  }
+
+  async function ensureLayoutFonts(items = state.textItems) {
+    const faces = new Map();
+    for (const item of items) {
+      const family = FONT_STACKS[item.fontFamily] ? item.fontFamily : "Source Han Sans SC";
+      if (!faces.has(family)) faces.set(family, new Set());
+      faces.get(family).add(400);
+      if (item.bold || /<(b|strong)\b|font-weight\s*:\s*(bold|[6-9]00)/i.test(item.html || "")) {
+        faces.get(family).add(700);
+      }
+    }
+    if (!faces.size) faces.set("Source Han Sans SC", new Set([400]));
+    await Promise.all(
+      Array.from(faces, ([family, weights]) => Array.from(weights, (weight) => loadFontFace(family, weight))).flat(),
+    );
   }
 
   function textTopInset(item) {
@@ -1707,7 +1742,17 @@
     return lines;
   }
 
-  function exportImage() {
+  async function exportImage() {
+    els.exportButton.disabled = true;
+    try {
+      await ensureLayoutFonts();
+    } catch (error) {
+      console.error("思源字体加载失败", error);
+      window.alert("思源字体尚未加载完成，请检查网络或刷新页面后重试。");
+      els.exportButton.disabled = false;
+      return;
+    }
+    els.exportButton.disabled = false;
     flushHistoryCommit();
     exitEditMode(false);
     const output = document.createElement("canvas");
@@ -1985,7 +2030,11 @@
       decimals: 2,
       onInput: (value) => applyLineHeight(value, { syncInputs: false, history: "defer" }),
     });
-    els.fontFamilySelect.addEventListener("change", () => updateSelectedText({ fontFamily: els.fontFamilySelect.value }));
+    els.fontFamilySelect.addEventListener("change", () => {
+      const fontFamily = els.fontFamilySelect.value;
+      updateSelectedText({ fontFamily });
+      loadFontFace(fontFamily, 400).then(scheduleRender).catch((error) => console.error("思源字体加载失败", error));
+    });
     els.textColorInput.addEventListener("input", () => applyTextColor(els.textColorInput.value));
     els.boldButton.addEventListener("click", () => execTextCommand("bold"));
     els.italicButton.addEventListener("click", () => execTextCommand("italic"));
@@ -2053,4 +2102,5 @@
   syncTextPanel();
   updateCanvasSize();
   commitHistory();
+  ensureLayoutFonts([]).then(scheduleRender).catch((error) => console.error("思源字体加载失败", error));
 })();
